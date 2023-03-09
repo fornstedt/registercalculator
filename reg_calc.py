@@ -120,17 +120,17 @@ class RegCalcWindow:
         
     def update_selection(self):
         if self.bin_entry.selection_present():
-            start = self.bin_entry.index(SEL_FIRST)
-            end = self.bin_entry.index(SEL_LAST)
+            start_index = self.bin_entry.index(SEL_FIRST)
+            end_index = self.bin_entry.index(SEL_LAST)
 
-            before = self.bin_entry.get()[0:start]
-            value = self.bin_entry.get()[start:end]
+            delimiters_before_selection = self.bin_entry.get()[0:start_index].count(DELIMITER)
+            delimiters_in_selection = self.bin_entry.get()[start_index:end_index].count(DELIMITER)
 
-            start = 31 - (start - before.count(DELIMITER))
-            end = 32 - (end - (before.count(DELIMITER) + value.count(DELIMITER)))
+            start_index = 31 - (start_index - delimiters_before_selection)
+            end_index = 32 - (end_index - delimiters_before_selection - delimiters_in_selection)
 
-            self.field_selection['start'] = start
-            self.field_selection['end'] = end
+            self.field_selection['start'] = start_index
+            self.field_selection['end'] = end_index
         else:
             self.field_selection['start'] = None
             self.field_selection['end'] = None
@@ -143,22 +143,25 @@ class RegCalcWindow:
                                       state='enabled')
 
     def hex_keyrelease(self, event):
-        value = self.hex_entry.get()
-        dec_value = self.hex_to_dec(value)
-        self.set_text(self.dec_entry, dec_value)
-        self.set_text(self.bin_entry, self.dec_to_bin(dec_value))
+        value_string = self.hex_entry.get()
+        value = int(value_string, 16) if value_string != '' else 0
+        self.update_state(value)
+        self.set_text(self.dec_entry, self.state['dec_string'])
+        self.set_text(self.bin_entry, self.state['bin_string_delim'])
 
     def dec_keyrelease(self, event):
-        value = self.dec_entry.get()
-        self.set_text(self.hex_entry, self.dec_to_hex(value))
-        self.set_text(self.bin_entry, self.dec_to_bin(value))
+        value_string = self.dec_entry.get()
+        value = int(value_string) if value_string != '' else 0
+        self.update_state(value)
+        self.set_text(self.hex_entry, self.state['hex_string'])
+        self.set_text(self.bin_entry, self.state['bin_string_delim'])
 
     def bin_keyrelease(self, event):
-        print(self.bin_entry.index(INSERT))
-        value = self.bin_entry.get()
-        dec_value = self.bin_to_dec(value)
-        self.set_text(self.hex_entry, self.dec_to_hex(dec_value))
-        self.set_text(self.dec_entry, dec_value)
+        value_string = self.bin_entry.get()
+        value = int(value_string.replace(DELIMITER, ""), 2) if value_string != '' else 0
+        self.update_state(value)
+        self.set_text(self.hex_entry, self.state['hex_string'])
+        self.set_text(self.dec_entry, self.state['dec_string'])
 
     @staticmethod
     def dec_to_hex(value: str) -> str:
