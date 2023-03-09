@@ -36,8 +36,8 @@ class RegCalcWindow:
         self.bin_entry.grid(row=1, column=0, columnspan=5)
 
         self.field_selection = {'start': None, 'end': None}
-        self.fields = {'settings': [], 'gui': []}
-        
+        self.fields = []
+
         self.state = {}
         self.update_state(0)
 
@@ -47,21 +47,21 @@ class RegCalcWindow:
         self.state['value'] = value
         self.state['dec_string'] = f'{value}'
         self.state['hex_string'] = f'{value:X}'
-        self.state['bin_string'] = f'{value:b}'
+        self.state['bin_string'] = f'{value:032b}'
         self.state['bin_string_delim'] = self.get_delimited_bin(value)
-        print(self.state)
-        
+        self.update_fields()
+
     @staticmethod
     def get_delimited_bin(value: int) -> str:
         bin_value = f'{value:032b}'
-        
+
         groups = []
         for i in range(0, len(bin_value), 4):
             groups.append(bin_value[i:i+4])
         bin_value = DELIMITER.join(groups)
 
         return bin_value
-    
+
     def validate_dec(self, text_to_insert, all_text, bit_width):
         max_value = 2 ** int(bit_width) - 1
         max_width = len(str(max_value))
@@ -73,7 +73,7 @@ class RegCalcWindow:
         max_value = 2 ** int(bit_width) - 1
         max_width = len(str(max_value))
         value = int(self.hex_to_dec(all_text))
-        
+
         return len(all_text) <= max_width and \
                all(c in hexdigits for c in text_to_insert) and \
                value <= max_value
@@ -84,40 +84,60 @@ class RegCalcWindow:
 
     def add_field_button_click(self):
         field = {'start': self.field_selection['start'],
-                 'end' : self.field_selection['end'],
+                 'end': self.field_selection['end'],
                  'name': ''}
         self.add_field(field)
         self.bin_entry.selection_clear()
         self.update_selection()
         self.update_add_field_button()
 
-    def add_field(self, field: dict):
-        bit_width = field["start"] - field["end"] + 1
-        gui = {'bit_label' : ttk.Label(text=f'{field["start"]}:{field["end"]}', borderwidth=5),
-               'bin_entry' : ttk.Entry(width=bit_width, justify='right', font='TkFixedFont', validate='key',
-                                       validatecommand=(self.root.register(self.is_bin), "%S", "%P", bit_width)),
-               'h_label' : ttk.Label(text='H', borderwidth=5),
-               'hex_entry': ttk.Entry(width=10, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.validate_hex), "%S", "%P", bit_width)),
-               'd_label' : ttk.Label(text='D', borderwidth=5),
-               'dec_entry': ttk.Entry(width=10, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.validate_dec), "%S", "%P", bit_width))}
-        self.fields['settings'].append(field)
-        self.fields['gui'].append(gui)
-        
-        next_row = len(self.fields['gui']) + 1
-        self.fields['gui'][-1]['bit_label'].grid(row=next_row, column=0)
-        self.fields['gui'][-1]['bin_entry'].grid(row=next_row, column=1)
-        self.fields['gui'][-1]['h_label'].grid(row=next_row, column=2)
-        self.fields['gui'][-1]['hex_entry'].grid(row=next_row, column=3)
-        self.fields['gui'][-1]['d_label'].grid(row=next_row, column=4)
-        self.fields['gui'][-1]['dec_entry'].grid(row=next_row, column=5)
+    def add_field(self, settings: dict):
+        if len(self.fields) == 0:
+            ttk.Label(text='Bits', borderwidth=5).grid(row=2, column=0)
+            ttk.Label(text='Bin', borderwidth=5).grid(row=2, column=1)
+            ttk.Label(text='Hex', borderwidth=5).grid(row=2, column=2)
+            ttk.Label(text='Dec', borderwidth=5).grid(row=2, column=3)
+            ttk.Label(text='Name', borderwidth=5).grid(row=2, column=4)
 
-        
+        bit_width = settings["start"] - settings["end"] + 1
+        max_value = 2 ** int(bit_width) - 1
+        max_hex_width = len(str(max_value))
+        max_bin_width = len(str(max_value))
+        gui = {'bit_label': ttk.Label(text=f'{settings["start"]}:{settings["end"]}', borderwidth=5),
+               'bin_entry': ttk.Entry(width=bit_width, justify='right', font='TkFixedFont', validate='key',
+                                      validatecommand=(self.root.register(self.is_bin), "%S", "%P", bit_width)),
+               'hex_entry': ttk.Entry(width=max_hex_width, justify='right', font='TkFixedFont', validate='key',
+                                      validatecommand=(self.root.register(self.validate_hex), "%S", "%P", bit_width)),
+               'dec_entry': ttk.Entry(width=max_bin_width, justify='right', font='TkFixedFont', validate='key',
+                                      validatecommand=(self.root.register(self.validate_dec), "%S", "%P", bit_width)),
+               'name': ttk.Entry(width=20, justify='left')}
+
+        field = {'settings': settings, 'gui': gui}
+        self.fields.append(field)
+
+        next_row = len(self.fields) + 2
+        self.fields[-1]['gui']['bit_label'].grid(row=next_row, column=0)
+        self.fields[-1]['gui']['bin_entry'].grid(row=next_row, column=1)
+        self.fields[-1]['gui']['hex_entry'].grid(row=next_row, column=2)
+        self.fields[-1]['gui']['dec_entry'].grid(row=next_row, column=3)
+        self.fields[-1]['gui']['name'].grid(row=next_row, column=4)
+
+    def update_fields(self):
+        self.set_text(self.dec_entry, self.state['dec_string'])
+        self.set_text(self.bin_entry, self.state['bin_string_delim'])
+        self.set_text(self.hex_entry, self.state['hex_string'])
+        for field in self.fields:
+            bin_start = 31 - field['settings']['start']
+            bin_end = 32 - field['settings']['end']
+            bin_string = self.state['bin_string'][bin_start:bin_end]
+            self.set_text(field['gui']['bin_entry'], bin_string)
+            self.set_text(field['gui']['dec_entry'], f'{int(bin_string, 2)}')
+            self.set_text(field['gui']['hex_entry'], f'{int(bin_string, 2):X}')
+
     def bin_mouse_motion(self, event):
         self.update_selection()
         self.update_add_field_button()
-        
+
     def update_selection(self):
         if self.bin_entry.selection_present():
             start_index = self.bin_entry.index(SEL_FIRST)
@@ -134,7 +154,7 @@ class RegCalcWindow:
         else:
             self.field_selection['start'] = None
             self.field_selection['end'] = None
-        
+
     def update_add_field_button(self):
         if self.field_selection['start'] is None or self.field_selection['end'] is None:
             self.add_button.configure(text='Add field', state='disabled')
@@ -146,22 +166,16 @@ class RegCalcWindow:
         value_string = self.hex_entry.get()
         value = int(value_string, 16) if value_string != '' else 0
         self.update_state(value)
-        self.set_text(self.dec_entry, self.state['dec_string'])
-        self.set_text(self.bin_entry, self.state['bin_string_delim'])
 
     def dec_keyrelease(self, event):
         value_string = self.dec_entry.get()
         value = int(value_string) if value_string != '' else 0
         self.update_state(value)
-        self.set_text(self.hex_entry, self.state['hex_string'])
-        self.set_text(self.bin_entry, self.state['bin_string_delim'])
 
     def bin_keyrelease(self, event):
         value_string = self.bin_entry.get()
         value = int(value_string.replace(DELIMITER, ""), 2) if value_string != '' else 0
         self.update_state(value)
-        self.set_text(self.hex_entry, self.state['hex_string'])
-        self.set_text(self.dec_entry, self.state['dec_string'])
 
     @staticmethod
     def dec_to_hex(value: str) -> str:
@@ -194,8 +208,10 @@ class RegCalcWindow:
 
     @staticmethod
     def set_text(entry, text):
+        index = entry.index(INSERT)
         entry.delete(0, END)
         entry.insert(0, text)
+        entry.icursor(index)
 
     def show(self):
         self.root.mainloop()
