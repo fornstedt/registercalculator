@@ -1,6 +1,7 @@
+import sys
 import json
 import tkinter as tk
-from tkinter import ttk, Frame, END, INSERT, ANCHOR, SEL_FIRST, SEL_LAST, filedialog
+from tkinter import ttk, Frame, filedialog, END, INSERT, SEL_FIRST, SEL_LAST
 from string import hexdigits
 from contextlib import suppress
 
@@ -27,7 +28,7 @@ class RegCalcWindow:
         self.dec_entry = ttk.Entry(self.topframe, width=10, justify='right', font='TkFixedFont', validate='key',
                                    validatecommand=(self.root.register(self.validate_dec), "%S", "%P", 32))
         self.bin_entry = ttk.Entry(self.topframe, width=39, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.is_bin), "%S", "%P", 32 + 7))
+                                   validatecommand=(self.root.register(self.validate_bin), "%S", "%P", 32 + 7))
 
         self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled', command=self.add_field_button_click)
 
@@ -56,9 +57,9 @@ class RegCalcWindow:
         self.update_state(0)
 
     def on_expose(self, event):
-        w = event.widget
-        if not w.children:
-            w.configure(height=1)
+        widget = event.widget
+        if not widget.children:
+            widget.configure(height=1)
 
     def reset_fields(self):
         for widget in self.bottomframe.winfo_children():
@@ -115,21 +116,16 @@ class RegCalcWindow:
     def validate_dec(self, text_to_insert, all_text, bit_width):
         max_value = 2 ** int(bit_width) - 1
         max_width = len(str(max_value))
-        return len(all_text) <= max_width and \
-               text_to_insert.isdecimal() and \
-               (all_text == '' or (int(all_text) <= max_value))
+        return len(all_text) <= max_width and text_to_insert.isdecimal() and (all_text == '' or (int(all_text) <= max_value))
 
     def validate_hex(self, text_to_insert, all_text, bit_width):
         max_value = 2 ** int(bit_width) - 1
         max_width = len(str(max_value))
         value = int(self.hex_to_dec(all_text))
-
-        return len(all_text) <= max_width and \
-               all(c in hexdigits for c in text_to_insert) and \
-               value <= max_value
+        return len(all_text) <= max_width and all(c in hexdigits for c in text_to_insert) and value <= max_value
 
     @staticmethod
-    def is_bin(text_to_insert, all_text, bit_width):
+    def validate_bin(text_to_insert, all_text, bit_width):
         return len(all_text) <= int(bit_width) and all(c in '01' + DELIMITER for c in text_to_insert)
 
     def add_field_button_click(self):
@@ -160,7 +156,7 @@ class RegCalcWindow:
         max_bin_width = len(str(max_value))
         gui = {'bit_label': ttk.Label(self.bottomframe, text=f'{settings["start"]}:{settings["end"]}', borderwidth=5),
                'bin_entry': ttk.Entry(self.bottomframe, width=bit_width, justify='right', font='TkFixedFont', validate='key',
-                                      validatecommand=(self.root.register(self.is_bin), "%S", "%P", bit_width)),
+                                      validatecommand=(self.root.register(self.validate_bin), "%S", "%P", bit_width)),
                'hex_entry': ttk.Entry(self.bottomframe, width=max_hex_width, justify='right', font='TkFixedFont', validate='key',
                                       validatecommand=(self.root.register(self.validate_hex), "%S", "%P", bit_width)),
                'dec_entry': ttk.Entry(self.bottomframe, width=max_bin_width, justify='right', font='TkFixedFont', validate='key',
@@ -197,7 +193,7 @@ class RegCalcWindow:
             self.set_text(field['gui']['hex_entry'], f'{int(bin_string, 2):X}')
             self.set_text(field['gui']['name'], field['settings']['name'])
 
-    def bin_mouse_motion(self, event):
+    def bin_mouse_motion(self, _):
         self.update_selection()
         self.update_add_field_button()
 
@@ -262,32 +258,9 @@ class RegCalcWindow:
         self.update_state(value)
 
     @staticmethod
-    def dec_to_hex(value: str) -> str:
-        hex_value = '0'
-        with suppress(ValueError): hex_value = f'{int(value):X}'
-        return hex_value
-
-    @staticmethod
     def hex_to_dec(value: str) -> str:
         dec_value = '0'
         with suppress(ValueError): dec_value = f'{int(value, 16)}'
-        return dec_value
-
-    @staticmethod
-    def dec_to_bin(value: str) -> str:
-        with suppress(ValueError): bin_value = f'{int(value):032b}'
-
-        if bin_value is not None:
-            groups = []
-            for i in range(0, len(bin_value), 4):
-                groups.append(bin_value[i:i+4])
-            bin_value = DELIMITER.join(groups)
-
-        return bin_value
-
-    @staticmethod
-    def bin_to_dec(value: str) -> str:
-        with suppress(ValueError): dec_value = f'{int(value.replace(DELIMITER, ""), 2)}'
         return dec_value
 
     @staticmethod
@@ -301,10 +274,18 @@ class RegCalcWindow:
         self.root.mainloop()
 
 
-def main():
-    reg_calc_window = RegCalcWindow()
-    reg_calc_window.show()
+def main(import_filepath = None):
+    main_window = RegCalcWindow()
+
+    if import_filepath:
+        with open(import_filepath, 'r', encoding='utf-8') as import_file:
+            main_window.import_fields(import_file)
+
+    main_window.show()
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        main()
