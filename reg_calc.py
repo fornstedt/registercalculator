@@ -25,7 +25,7 @@ class RegCalcWindow:
 
         self.add_button = ttk.Button(text='Add field', width=15, state='disabled', command=self.add_field_button_click)
 
-        self.hex_entry.bind('<Any-KeyRelease>', self.hex_keyrelease)
+        self.hex_entry.bind('<Any-KeyRelease>',  lambda event: self.hex_keyrelease(self.hex_entry))
         self.dec_entry.bind('<Any-KeyRelease>', self.dec_keyrelease)
         self.bin_entry.bind('<Any-KeyRelease>', self.bin_keyrelease)
         self.bin_entry.bind('<Motion>', self.bin_mouse_motion)
@@ -41,15 +41,13 @@ class RegCalcWindow:
         self.state = {}
         self.update_state(0)
 
-        self.set_text(self.bin_entry, self.dec_to_bin(0))
-
     def update_state(self, value: int) -> None:
         self.state['value'] = value
         self.state['dec_string'] = f'{value}'
         self.state['hex_string'] = f'{value:X}'
         self.state['bin_string'] = f'{value:032b}'
         self.state['bin_string_delim'] = self.get_delimited_bin(value)
-        self.update_fields()
+        self.update_gui_values()
 
     @staticmethod
     def get_delimited_bin(value: int) -> str:
@@ -83,9 +81,14 @@ class RegCalcWindow:
         return len(all_text) <= int(bit_width) and all(c in '01' + DELIMITER for c in text_to_insert)
 
     def add_field_button_click(self):
-        field = {'start': self.field_selection['start'],
-                 'end': self.field_selection['end'],
-                 'name': ''}
+        field = {}
+        field['start'] = self.field_selection['start']
+        field['end'] = self.field_selection['end']
+        field['name'] = ''
+        field['bit_length'] = field['start'] - field['end'] + 1
+        field['max_value'] = 2 ** field['bit_length'] - 1
+        field['mask'] = ~(field['max_value'] << field['end'])
+        
         self.add_field(field)
         self.bin_entry.selection_clear()
         self.update_selection()
@@ -113,16 +116,22 @@ class RegCalcWindow:
                'name': ttk.Entry(width=20, justify='left')}
 
         field = {'settings': settings, 'gui': gui}
+
+        field['gui']['hex_entry'].bind('<Any-KeyRelease>', lambda event: self.hex_field_keyrelease(field))
+        field['gui']['dec_entry'].bind('<Any-KeyRelease>', lambda event: self.dec_field_keyrelease(field))
+        field['gui']['bin_entry'].bind('<Any-KeyRelease>', lambda event: self.bin_field_keyrelease(field))
+        
+        next_row = len(self.fields) + 3
+        field['gui']['bit_label'].grid(row=next_row, column=0)
+        field['gui']['bin_entry'].grid(row=next_row, column=1)
+        field['gui']['hex_entry'].grid(row=next_row, column=2)
+        field['gui']['dec_entry'].grid(row=next_row, column=3)
+        field['gui']['name'].grid(row=next_row, column=4)
+
         self.fields.append(field)
-
-        next_row = len(self.fields) + 2
-        self.fields[-1]['gui']['bit_label'].grid(row=next_row, column=0)
-        self.fields[-1]['gui']['bin_entry'].grid(row=next_row, column=1)
-        self.fields[-1]['gui']['hex_entry'].grid(row=next_row, column=2)
-        self.fields[-1]['gui']['dec_entry'].grid(row=next_row, column=3)
-        self.fields[-1]['gui']['name'].grid(row=next_row, column=4)
-
-    def update_fields(self):
+        self.update_gui_values()
+        
+    def update_gui_values(self):
         self.set_text(self.dec_entry, self.state['dec_string'])
         self.set_text(self.bin_entry, self.state['bin_string_delim'])
         self.set_text(self.hex_entry, self.state['hex_string'])
@@ -162,8 +171,26 @@ class RegCalcWindow:
             self.add_button.configure(text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
                                       state='enabled')
 
-    def hex_keyrelease(self, event):
-        value_string = self.hex_entry.get()
+    def hex_field_keyrelease(self, field):
+        value_string = field['gui']['hex_entry'].get()
+        field_value = (int(value_string, 16) if value_string != '' else 0) << field['settings']['end']
+        value = (self.state['value'] & field['settings']['mask']) | field_value
+        self.update_state(value)
+        
+    def dec_field_keyrelease(self, field):
+        value_string = field['gui']['dec_entry'].get()
+        field_value = (int(value_string) if value_string != '' else 0) << field['settings']['end']
+        value = (self.state['value'] & field['settings']['mask']) | field_value
+        self.update_state(value)
+        
+    def bin_field_keyrelease(self, field):
+        value_string = field['gui']['bin_entry'].get()
+        field_value = (int(value_string, 2) if value_string != '' else 0) << field['settings']['end']
+        value = (self.state['value'] & field['settings']['mask']) | field_value
+        self.update_state(value)
+        
+    def hex_keyrelease(self, entry):
+        value_string = entry.get()
         value = int(value_string, 16) if value_string != '' else 0
         self.update_state(value)
 
