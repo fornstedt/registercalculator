@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, END, INSERT, ANCHOR, SEL_FIRST, SEL_LAST
+from tkinter import ttk, Frame, END, INSERT, ANCHOR, SEL_FIRST, SEL_LAST
 from string import hexdigits
 from contextlib import suppress
 
@@ -13,27 +13,33 @@ class RegCalcWindow:
         self.root.rowconfigure(1, minsize=30)
         self.root.title('Register Calculator')
 
-        self.hex_label = ttk.Label(text="Hex", borderwidth=5).grid(row=0, column=0)
-        self.dec_label = ttk.Label(text="Dec", borderwidth=5).grid(row=0, column=2)
+        self.topframe = Frame(self.root)
+        self.topframe.pack(padx=1, pady=1)
+        self.bottomframe = Frame(self.root)
+        self.bottomframe.pack(padx=1, pady=1)
+        
+        
+        self.hex_label = ttk.Label(self.topframe, text="Hex", borderwidth=5).grid(row=0, column=0)
+        self.dec_label = ttk.Label(self.topframe, text="Dec", borderwidth=5).grid(row=0, column=2)
 
-        self.hex_entry = ttk.Entry(width=8, justify='right', font='TkFixedFont', validate='key',
+        self.hex_entry = ttk.Entry(self.topframe, width=8, justify='right', font='TkFixedFont', validate='key',
                                    validatecommand=(self.root.register(self.validate_hex), "%S", "%P", 32))
-        self.dec_entry = ttk.Entry(width=10, justify='right', font='TkFixedFont', validate='key',
+        self.dec_entry = ttk.Entry(self.topframe, width=10, justify='right', font='TkFixedFont', validate='key',
                                    validatecommand=(self.root.register(self.validate_dec), "%S", "%P", 32))
-        self.bin_entry = ttk.Entry(width=39, justify='right', font='TkFixedFont', validate='key',
+        self.bin_entry = ttk.Entry(self.topframe, width=39, justify='right', font='TkFixedFont', validate='key',
                                    validatecommand=(self.root.register(self.is_bin), "%S", "%P", 32 + 7))
 
-        self.add_button = ttk.Button(text='Add field', width=15, state='disabled', command=self.add_field_button_click)
+        self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled', command=self.add_field_button_click)
 
         self.hex_entry.bind('<Any-KeyRelease>',  lambda event: self.hex_keyrelease(self.hex_entry))
         self.dec_entry.bind('<Any-KeyRelease>', self.dec_keyrelease)
         self.bin_entry.bind('<Any-KeyRelease>', self.bin_keyrelease)
         self.bin_entry.bind('<Motion>', self.bin_mouse_motion)
 
-        self.hex_entry.grid(row=0, column=1)
-        self.dec_entry.grid(row=0, column=3)
-        self.add_button.grid(row=0, column=4)
-        self.bin_entry.grid(row=1, column=0, columnspan=5)
+        self.hex_entry.grid(row=0, column=1, padx=1, pady=1)
+        self.dec_entry.grid(row=0, column=3, padx=1, pady=1)
+        self.add_button.grid(row=0, column=4, padx=1, pady=1)
+        self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=5)
 
         self.field_selection = {'start': None, 'end': None}
         self.fields = []
@@ -96,24 +102,24 @@ class RegCalcWindow:
 
     def add_field(self, settings: dict):
         if len(self.fields) == 0:
-            ttk.Label(text='Bits', borderwidth=5).grid(row=2, column=0)
-            ttk.Label(text='Bin', borderwidth=5).grid(row=2, column=1)
-            ttk.Label(text='Hex', borderwidth=5).grid(row=2, column=2)
-            ttk.Label(text='Dec', borderwidth=5).grid(row=2, column=3)
-            ttk.Label(text='Name', borderwidth=5).grid(row=2, column=4)
+            ttk.Label(self.bottomframe, text='Bits', borderwidth=5).grid(row=0, column=0, padx=1, pady=1)
+            ttk.Label(self.bottomframe, text='Bin', borderwidth=5).grid(row=0, column=1, padx=1, pady=1, sticky='E')
+            ttk.Label(self.bottomframe, text='Hex', borderwidth=5).grid(row=0, column=2, padx=1, pady=1, sticky='E')
+            ttk.Label(self.bottomframe, text='Dec', borderwidth=5).grid(row=0, column=3, padx=1, pady=1, sticky='E')
+            ttk.Label(self.bottomframe, text='Name', borderwidth=5).grid(row=0, column=4, padx=3, pady=1, sticky='W')
 
         bit_width = settings["start"] - settings["end"] + 1
         max_value = 2 ** int(bit_width) - 1
         max_hex_width = len(str(max_value))
         max_bin_width = len(str(max_value))
-        gui = {'bit_label': ttk.Label(text=f'{settings["start"]}:{settings["end"]}', borderwidth=5),
-               'bin_entry': ttk.Entry(width=bit_width, justify='right', font='TkFixedFont', validate='key',
+        gui = {'bit_label': ttk.Label(self.bottomframe, text=f'{settings["start"]}:{settings["end"]}', borderwidth=5),
+               'bin_entry': ttk.Entry(self.bottomframe, width=bit_width, justify='right', font='TkFixedFont', validate='key',
                                       validatecommand=(self.root.register(self.is_bin), "%S", "%P", bit_width)),
-               'hex_entry': ttk.Entry(width=max_hex_width, justify='right', font='TkFixedFont', validate='key',
+               'hex_entry': ttk.Entry(self.bottomframe, width=max_hex_width, justify='right', font='TkFixedFont', validate='key',
                                       validatecommand=(self.root.register(self.validate_hex), "%S", "%P", bit_width)),
-               'dec_entry': ttk.Entry(width=max_bin_width, justify='right', font='TkFixedFont', validate='key',
+               'dec_entry': ttk.Entry(self.bottomframe, width=max_bin_width, justify='right', font='TkFixedFont', validate='key',
                                       validatecommand=(self.root.register(self.validate_dec), "%S", "%P", bit_width)),
-               'name': ttk.Entry(width=20, justify='left')}
+               'name': ttk.Entry(self.bottomframe, width=20, justify='left', font='TkFixedFont')}
 
         field = {'settings': settings, 'gui': gui}
 
@@ -121,12 +127,12 @@ class RegCalcWindow:
         field['gui']['dec_entry'].bind('<Any-KeyRelease>', lambda event: self.dec_field_keyrelease(field))
         field['gui']['bin_entry'].bind('<Any-KeyRelease>', lambda event: self.bin_field_keyrelease(field))
         
-        next_row = len(self.fields) + 3
-        field['gui']['bit_label'].grid(row=next_row, column=0)
-        field['gui']['bin_entry'].grid(row=next_row, column=1)
-        field['gui']['hex_entry'].grid(row=next_row, column=2)
-        field['gui']['dec_entry'].grid(row=next_row, column=3)
-        field['gui']['name'].grid(row=next_row, column=4)
+        next_row = len(self.fields) + 1
+        field['gui']['bit_label'].grid(row=next_row, column=0, padx=1, pady=1)
+        field['gui']['bin_entry'].grid(row=next_row, column=1, sticky='E', padx=3, pady=1)
+        field['gui']['hex_entry'].grid(row=next_row, column=2, sticky='E', padx=3, pady=1)
+        field['gui']['dec_entry'].grid(row=next_row, column=3, sticky='E', padx=3, pady=1)
+        field['gui']['name'].grid(row=next_row, column=4, padx=3, pady=1, columnspan=2)
 
         self.fields.append(field)
         self.update_gui_values()
