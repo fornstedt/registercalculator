@@ -1,5 +1,6 @@
+import json
 import tkinter as tk
-from tkinter import ttk, Frame, END, INSERT, ANCHOR, SEL_FIRST, SEL_LAST
+from tkinter import ttk, Frame, END, INSERT, ANCHOR, SEL_FIRST, SEL_LAST, filedialog
 from string import hexdigits
 from contextlib import suppress
 
@@ -17,10 +18,9 @@ class RegCalcWindow:
         self.topframe.pack(padx=1, pady=1)
         self.bottomframe = Frame(self.root)
         self.bottomframe.pack(padx=1, pady=1)
-        
-        
-        self.hex_label = ttk.Label(self.topframe, text="Hex", borderwidth=5).grid(row=0, column=0)
-        self.dec_label = ttk.Label(self.topframe, text="Dec", borderwidth=5).grid(row=0, column=2)
+
+        ttk.Label(self.topframe, text="Hex", borderwidth=5).grid(row=0, column=0)
+        ttk.Label(self.topframe, text="Dec", borderwidth=5).grid(row=0, column=2)
 
         self.hex_entry = ttk.Entry(self.topframe, width=8, justify='right', font='TkFixedFont', validate='key',
                                    validatecommand=(self.root.register(self.validate_hex), "%S", "%P", 32))
@@ -41,11 +41,57 @@ class RegCalcWindow:
         self.add_button.grid(row=0, column=4, padx=1, pady=1)
         self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=5)
 
+        self.menu = tk.Menu(self.root, tearoff=0)
+        self.menu.add_command(label='Export fields', command=self.export_dialog)
+        self.menu.add_command(label='Import fields', command=self.import_dialog)
+        self.menu.add_separator()
+        self.menu.add_command(label='Reset fields', command=self.reset_fields)
+        self.root.bind("<Button-2>", self.show_menu)
+        self.bottomframe.bind('<Expose>', self.on_expose)
+
         self.field_selection = {'start': None, 'end': None}
         self.fields = []
 
         self.state = {}
         self.update_state(0)
+
+    def on_expose(self, event):
+        w = event.widget
+        if not w.children:
+            w.configure(height=1)
+
+    def reset_fields(self):
+        for widget in self.bottomframe.winfo_children():
+            widget.destroy()
+        self.fields.clear()
+
+    def export_dialog(self):
+        if (export_file := filedialog.asksaveasfile(defaultextension='.json')) is not None:
+            self.export_fields(export_file)
+            export_file.close()
+
+    def export_fields(self, file):
+        export_fields = []
+        for field in self.fields:
+            export_fields.append(field['settings'])
+        file.write(json.dumps(export_fields, indent=4))
+
+    def import_dialog(self):
+        if (import_file := filedialog.askopenfile()) is not None:
+            self.import_fields(import_file)
+            import_file.close()
+
+    def import_fields(self, file):
+        self.reset_fields()
+        import_fields = json.loads(file.read())
+        for field in import_fields:
+            self.add_field(field)
+
+    def show_menu(self, event):
+        try:
+            self.menu.post(event.x_root, event.y_root)
+        finally:
+            self.menu.grab_release()
 
     def update_state(self, value: int) -> None:
         self.state['value'] = value
@@ -94,7 +140,7 @@ class RegCalcWindow:
         field['bit_length'] = field['start'] - field['end'] + 1
         field['max_value'] = 2 ** field['bit_length'] - 1
         field['mask'] = ~(field['max_value'] << field['end'])
-        
+
         self.add_field(field)
         self.bin_entry.selection_clear()
         self.update_selection()
@@ -126,7 +172,8 @@ class RegCalcWindow:
         field['gui']['hex_entry'].bind('<Any-KeyRelease>', lambda event: self.hex_field_keyrelease(field))
         field['gui']['dec_entry'].bind('<Any-KeyRelease>', lambda event: self.dec_field_keyrelease(field))
         field['gui']['bin_entry'].bind('<Any-KeyRelease>', lambda event: self.bin_field_keyrelease(field))
-        
+        field['gui']['name'].bind('<Any-KeyRelease>', lambda event: self.name_field_keyrelease(field))
+
         next_row = len(self.fields) + 1
         field['gui']['bit_label'].grid(row=next_row, column=0, padx=1, pady=1)
         field['gui']['bin_entry'].grid(row=next_row, column=1, sticky='E', padx=3, pady=1)
@@ -136,7 +183,7 @@ class RegCalcWindow:
 
         self.fields.append(field)
         self.update_gui_values()
-        
+
     def update_gui_values(self):
         self.set_text(self.dec_entry, self.state['dec_string'])
         self.set_text(self.bin_entry, self.state['bin_string_delim'])
@@ -148,6 +195,7 @@ class RegCalcWindow:
             self.set_text(field['gui']['bin_entry'], bin_string)
             self.set_text(field['gui']['dec_entry'], f'{int(bin_string, 2)}')
             self.set_text(field['gui']['hex_entry'], f'{int(bin_string, 2):X}')
+            self.set_text(field['gui']['name'], field['settings']['name'])
 
     def bin_mouse_motion(self, event):
         self.update_selection()
@@ -182,19 +230,22 @@ class RegCalcWindow:
         field_value = (int(value_string, 16) if value_string != '' else 0) << field['settings']['end']
         value = (self.state['value'] & field['settings']['mask']) | field_value
         self.update_state(value)
-        
+
     def dec_field_keyrelease(self, field):
         value_string = field['gui']['dec_entry'].get()
         field_value = (int(value_string) if value_string != '' else 0) << field['settings']['end']
         value = (self.state['value'] & field['settings']['mask']) | field_value
         self.update_state(value)
-        
+
     def bin_field_keyrelease(self, field):
         value_string = field['gui']['bin_entry'].get()
         field_value = (int(value_string, 2) if value_string != '' else 0) << field['settings']['end']
         value = (self.state['value'] & field['settings']['mask']) | field_value
         self.update_state(value)
-        
+
+    def name_field_keyrelease(self, field):
+        field['settings']['name'] = field['gui']['name'].get()
+
     def hex_keyrelease(self, entry):
         value_string = entry.get()
         value = int(value_string, 16) if value_string != '' else 0
