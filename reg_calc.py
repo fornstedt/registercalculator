@@ -10,10 +10,17 @@ DELIMITER = '_'
 
 class RegCalcWindow:
     def __init__(self) -> None:
+
+        if sys.platform == 'darwin':
+            self.right_click_button = '<Button-2>'
+        else:
+            self.right_click_button = '<Button-3>'
+
         self.root = tk.Tk()
         self.root.rowconfigure(0, minsize=20)
         self.root.rowconfigure(1, minsize=30)
         self.root.title('Register Calculator')
+        self.root.resizable(False, False)
 
         self.topframe = Frame(self.root)
         self.topframe.pack(padx=1, pady=1)
@@ -47,7 +54,7 @@ class RegCalcWindow:
         self.menu.add_command(label='Import fields', command=self.import_dialog)
         self.menu.add_separator()
         self.menu.add_command(label='Reset fields', command=self.reset_fields)
-        self.root.bind("<Button-2>", self.show_menu)
+        self.root.bind(self.right_click_button, self.show_menu)
         self.bottomframe.bind('<Expose>', self.on_expose)
 
         self.field_selection = {'start': None, 'end': None}
@@ -67,7 +74,9 @@ class RegCalcWindow:
         self.fields.clear()
 
     def export_dialog(self):
-        if (export_file := filedialog.asksaveasfile(defaultextension='.json')) is not None:
+        if (export_file := filedialog.asksaveasfile(defaultextension='.json',
+                                                    filetypes=[('JSON-files', '*.json'),
+                                                               ('All files', '*.*')])) is not None:
             self.export_fields(export_file)
             export_file.close()
 
@@ -78,7 +87,8 @@ class RegCalcWindow:
         file.write(json.dumps(export_fields, indent=4))
 
     def import_dialog(self):
-        if (import_file := filedialog.askopenfile()) is not None:
+        if (import_file := filedialog.askopenfile(filetypes=[('JSON-files', '*.json'),
+                                                             ('All files', '*.*')])) is not None:
             self.import_fields(import_file)
             import_file.close()
 
