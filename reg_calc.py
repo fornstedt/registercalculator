@@ -185,7 +185,7 @@ class RegCalcWindow:
         field['gui']['bin_entry'].grid(row=next_row, column=1, sticky='E', padx=3, pady=1)
         field['gui']['hex_entry'].grid(row=next_row, column=2, sticky='E', padx=3, pady=1)
         field['gui']['dec_entry'].grid(row=next_row, column=3, sticky='E', padx=3, pady=1)
-        field['gui']['name'].grid(row=next_row, column=4, padx=3, pady=1, columnspan=2)
+        field['gui']['name'].grid(row=next_row, column=4, sticky='W', padx=3, pady=1, columnspan=2)
 
         self.fields.append(field)
         self.update_gui_values()
@@ -202,6 +202,7 @@ class RegCalcWindow:
             self.set_text(field['gui']['dec_entry'], f'{int(bin_string, 2)}')
             self.set_text(field['gui']['hex_entry'], f'{int(bin_string, 2):X}')
             self.set_text(field['gui']['name'], field['settings']['name'])
+            self.adjust_entry_length(field['gui']['name'])
 
     def bin_mouse_motion(self, _):
         self.update_selection()
@@ -231,6 +232,11 @@ class RegCalcWindow:
             self.add_button.configure(text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
                                       state='enabled')
 
+    def adjust_entry_length(self, entry, minimum=20):
+        length = len(entry.get())
+        if length > minimum:
+            entry.configure(width=length)
+        
     def hex_field_keyrelease(self, field):
         value_string = field['gui']['hex_entry'].get()
         field_value = (int(value_string, 16) if value_string != '' else 0) << field['settings']['end']
@@ -251,6 +257,7 @@ class RegCalcWindow:
 
     def name_field_keyrelease(self, field):
         field['settings']['name'] = field['gui']['name'].get()
+        self.adjust_entry_length(field['gui']['name'])
 
     def hex_keyrelease(self, entry):
         value_string = entry.get()
