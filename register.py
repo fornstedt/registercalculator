@@ -11,20 +11,20 @@ class RegisterBase:
         return self._bit_length
 
     @property
-    def dec_string(self) -> str:
+    def dec(self) -> str:
         return f'{self._value}'
 
     @property
-    def hex_string(self) -> str:
+    def hex(self) -> str:
         return f'{self._value:X}'
 
     @property
-    def bin_string(self) -> str:
+    def bin(self) -> str:
         return f'{self._value:0{self._bit_length}b}'
 
     @property
-    def bin_string_delim(self) -> str:
-        string = self.bin_string
+    def bin_delimited(self) -> str:
+        string = self.bin
 
         groups = []
         for i in range(0, len(string), 4):
@@ -34,14 +34,27 @@ class RegisterBase:
         return string
 
     @property
-    def max_value(self) -> int:
+    def max(self) -> int:
         return (2 ** self._bit_length) - 1
+
+    @property
+    def max_dec_width(self) -> int:
+        return len(f'{self.max}')
+
+    @property
+    def max_hex_width(self) -> int:
+        return len(f'{self.max:X}')
+
+    @property
+    def max_bin_width(self) -> int:
+        return self._bit_length
 
 
 class Register(RegisterBase):
     def __init__(self, value=0, bit_length=32) -> None:
         super().__init__(value, bit_length)
         self.bit_length = bit_length
+        self.fields = []
 
     @property
     def value(self) -> int:
@@ -51,6 +64,8 @@ class Register(RegisterBase):
     def value(self, value: int) -> None:
         self._value = value
         self._truncate()
+        for field in self.fields:
+            field.update_value()
 
     @RegisterBase.bit_length.setter
     def bit_length(self, bit_length: int) -> None:
@@ -73,7 +88,13 @@ class Register(RegisterBase):
             pass
 
     def _truncate(self) -> None:
-        self._value = self._value & self.max_value
+        self._value = self._value & self.max
+
+    def _register_field(self, field) -> None:
+        self.fields.append(field)
+
+    def clear_fields(self) -> None:
+        self.fields.clear()
 
 
 class Field(RegisterBase):
@@ -87,8 +108,9 @@ class Field(RegisterBase):
         self._start_bit = start_bit
         self._end_bit = end_bit
         self._bit_length = start_bit - end_bit + 1
-        self._mask = self.max_value << self._end_bit
+        self._mask = self.max << self._end_bit
         super().__init__(self.value, bit_length=self._bit_length)
+        self._register._register_field(self)
 
     @property
     def value(self) -> int:
@@ -99,7 +121,18 @@ class Field(RegisterBase):
 
     @value.setter
     def value(self, value):
-        if value <= self.max_value:
+        if value <= self.max:
             self._register.value = (self._register.value & ~self._mask) | (value << self._end_bit)
         else:
             raise ValueError('Value cannot fit into field.')
+
+    @property
+    def start(self):
+        return self._start_bit
+
+    @property
+    def end(self):
+        return self._end_bit
+
+    def update_value(self):
+        self._value = (self._register.value & self._mask) >> self._end_bit
