@@ -8,7 +8,7 @@ from contextlib import suppress
 
 DELIMITER = '_'
 NAME_FIELD_WIDTH=30
-BIT_LENGTHS=['16 bits', '32 bits', '64 bits']
+BIT_LENGTHS=['8 bits', '16 bits', '32 bits']
 
 class RegCalcWindow:
     def __init__(self) -> None:
@@ -25,7 +25,7 @@ class RegCalcWindow:
         self.root.resizable(False, False)
 
         self.bit_length_string = tk.StringVar(self.root)
-        self.bit_length_string.set(BIT_LENGTHS[1])
+        self.bit_length_string.set(BIT_LENGTHS[2])
         
         self.topframe = Frame(self.root)
         self.topframe.pack(padx=1, pady=1)
@@ -45,7 +45,7 @@ class RegCalcWindow:
         self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled', command=self.add_field_button_click)
         self.swap_button = ttk.Button(self.topframe, text='Swap bytes', width=15, state='enabled', command=self.swap_bytes_button_click)
         
-        self.bit_length_menu = ttk.OptionMenu(self.topframe, self.bit_length_string, BIT_LENGTHS[1], *BIT_LENGTHS)
+        self.bit_length_menu = ttk.OptionMenu(self.topframe, self.bit_length_string, BIT_LENGTHS[2], *BIT_LENGTHS, command=self.bit_selection_clicked)
 
         self.hex_entry.bind('<Any-KeyRelease>',  lambda event: self.hex_keyrelease(self.hex_entry))
         self.dec_entry.bind('<Any-KeyRelease>', self.dec_keyrelease)
@@ -73,17 +73,26 @@ class RegCalcWindow:
         self.state = {}
         self.update_state(0)
 
+    def bit_selection_clicked(self, _):
+        self.update_state(self.state['value'] & (2**self.bit_length - 1))
+        self.update_gui_values()
+        
     @property
     def bit_length(self):
-        return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 4)
+        return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
     
     def swap_bytes_button_click(self):
         value = self.state['value']
-        self.update_state(((value >> 24) & 0x000000FF) | \
-                          ((value <<  8) & 0x00FF0000) | \
-                          ((value >>  8) & 0x0000FF00) | \
-                          ((value << 24) & 0xFF000000))
-        print(self.bit_length)
+        if self.bit_length == 16:
+            self.update_state(((value >> 8) & 0x00FF) | \
+                              ((value << 8) & 0xFF00))
+        elif self.bit_length == 32:
+            self.update_state(((value >> 24) & 0x000000FF) | \
+                            ((value <<  8) & 0x00FF0000) | \
+                            ((value >>  8) & 0x0000FF00) | \
+                            ((value << 24) & 0xFF000000))
+        else:
+            pass
     
     def on_expose(self, event):
         widget = event.widget
@@ -132,13 +141,12 @@ class RegCalcWindow:
         self.state['value'] = value
         self.state['dec_string'] = f'{value}'
         self.state['hex_string'] = f'{value:X}'
-        self.state['bin_string'] = f'{value:032b}'
+        self.state['bin_string'] = f'{value:0{self.bit_length}b}'
         self.state['bin_string_delim'] = self.get_delimited_bin(value)
         self.update_gui_values()
 
-    @staticmethod
-    def get_delimited_bin(value: int) -> str:
-        bin_value = f'{value:032b}'
+    def get_delimited_bin(self, value: int) -> str:
+        bin_value = f'{value:0{self.bit_length}b}'
 
         groups = []
         for i in range(0, len(bin_value), 4):
@@ -148,19 +156,18 @@ class RegCalcWindow:
         return bin_value
 
     def validate_dec(self, text_to_insert, all_text, bit_width):
-        max_value = 2 ** int(bit_width) - 1
+        max_value = 2 ** int(self.bit_length) - 1
         max_width = len(str(max_value))
         return len(all_text) <= max_width and text_to_insert.isdecimal() and (all_text == '' or (int(all_text) <= max_value))
 
     def validate_hex(self, text_to_insert, all_text, bit_width):
-        max_value = 2 ** int(bit_width) - 1
+        max_value = 2 ** int(self.bit_length) - 1
         max_width = len(str(max_value))
         value = int(self.hex_to_dec(all_text))
         return len(all_text) <= max_width and all(c in hexdigits for c in text_to_insert) and value <= max_value
 
-    @staticmethod
-    def validate_bin(text_to_insert, all_text, bit_width):
-        return len(all_text) <= int(bit_width) and all(c in '01' + DELIMITER for c in text_to_insert)
+    def validate_bin(self, text_to_insert, all_text, bit_width):
+        return len(all_text) <= (self.bit_length + self.bit_length // 4 - 1) and all(c in '01' + DELIMITER for c in text_to_insert)
 
     def add_field_button_click(self):
         field = {}
@@ -221,13 +228,19 @@ class RegCalcWindow:
         self.set_text(self.bin_entry, self.state['bin_string_delim'])
         self.set_text(self.hex_entry, self.state['hex_string'])
         for field in self.fields:
-            bin_start = 31 - field['settings']['start']
-            bin_end = 32 - field['settings']['end']
+            bin_start = max(0, self.bit_length - field['settings']['start'] - 1)
+            bin_end = max(0, self.bit_length - field['settings']['end'])
             bin_string = self.state['bin_string'][bin_start:bin_end]
-            self.set_text(field['gui']['bin_entry'], bin_string)
-            self.set_text(field['gui']['dec_entry'], f'{int(bin_string, 2)}')
-            self.set_text(field['gui']['hex_entry'], f'{int(bin_string, 2):X}')
-            self.set_text(field['gui']['name'], field['settings']['name'])
+            if len(bin_string) == 0:
+                field['gui']['bin_entry'].config(state = 'disabled')
+                field['gui']['dec_entry'].config(state = 'disabled')
+                field['gui']['hex_entry'].config(state = 'disabled')
+                field['gui']['name'].config(state = 'disabled')
+            else:
+                self.set_text(field['gui']['bin_entry'], bin_string)
+                self.set_text(field['gui']['dec_entry'], f'{int(bin_string, 2)}')
+                self.set_text(field['gui']['hex_entry'], f'{int(bin_string, 2):X}')
+                self.set_text(field['gui']['name'], field['settings']['name'])
             self.adjust_entry_length(field['gui']['name'])
 
     def bin_mouse_motion(self, _):
@@ -242,8 +255,8 @@ class RegCalcWindow:
             delimiters_before_selection = self.bin_entry.get()[0:start_index].count(DELIMITER)
             delimiters_in_selection = self.bin_entry.get()[start_index:end_index].count(DELIMITER)
 
-            start_index = 31 - (start_index - delimiters_before_selection)
-            end_index = 32 - (end_index - delimiters_before_selection - delimiters_in_selection)
+            start_index = self.bit_length - (start_index - delimiters_before_selection) - 1
+            end_index = self.bit_length - (end_index - delimiters_before_selection - delimiters_in_selection)
 
             self.field_selection['start'] = start_index
             self.field_selection['end'] = end_index
@@ -309,6 +322,7 @@ class RegCalcWindow:
     @staticmethod
     def set_text(entry, text):
         index = entry.index(INSERT)
+        entry.config(state='enabled')
         entry.delete(0, END)
         entry.insert(0, text)
         entry.icursor(index)
