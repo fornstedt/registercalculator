@@ -6,6 +6,8 @@ from tkinter import ttk, Frame, filedialog, END, INSERT, SEL_FIRST, SEL_LAST
 from string import hexdigits
 from contextlib import suppress
 
+from register import RegisterState
+
 DELIMITER = '_'
 NAME_FIELD_WIDTH=30
 BIT_LENGTHS=['8 bits', '16 bits', '32 bits']
@@ -18,6 +20,7 @@ class RegCalcWindow:
         else:
             self.right_click_button = '<Button-3>'
 
+        self.register = RegisterState()
         self.root = tk.Tk()
         self.root.rowconfigure(0, minsize=20)
         self.root.rowconfigure(1, minsize=30)
@@ -70,29 +73,15 @@ class RegCalcWindow:
         self.field_selection = {'start': None, 'end': None}
         self.fields = []
 
-        self.state = {}
-        self.update_state(0)
+        self.update_value(0)
 
     def bit_selection_clicked(self, _):
-        self.update_state(self.state['value'] & (2**self.bit_length - 1))
+        self.update_value(self.register.value & (2**self.register.bit_length - 1))
         self.update_gui_values()
-        
-    @property
-    def bit_length(self):
-        return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
-    
+
     def swap_bytes_button_click(self):
-        value = self.state['value']
-        if self.bit_length == 16:
-            self.update_state(((value >> 8) & 0x00FF) | \
-                              ((value << 8) & 0xFF00))
-        elif self.bit_length == 32:
-            self.update_state(((value >> 24) & 0x000000FF) | \
-                            ((value <<  8) & 0x00FF0000) | \
-                            ((value >>  8) & 0x0000FF00) | \
-                            ((value << 24) & 0xFF000000))
-        else:
-            pass
+        self.register.swap_bytes()
+        self.update_value(self.register.value)
     
     def on_expose(self, event):
         widget = event.widget
@@ -137,37 +126,21 @@ class RegCalcWindow:
         finally:
             self.menu.grab_release()
 
-    def update_state(self, value: int) -> None:
-        self.state['value'] = value
-        self.state['dec_string'] = f'{value}'
-        self.state['hex_string'] = f'{value:X}'
-        self.state['bin_string'] = f'{value:0{self.bit_length}b}'
-        self.state['bin_string_delim'] = self.get_delimited_bin(value)
+    def update_value(self, register_value: int) -> None:
+        self.register.value = register_value
         self.update_gui_values()
 
-    def get_delimited_bin(self, value: int) -> str:
-        bin_value = f'{value:0{self.bit_length}b}'
-
-        groups = []
-        for i in range(0, len(bin_value), 4):
-            groups.append(bin_value[i:i+4])
-        bin_value = DELIMITER.join(groups)
-
-        return bin_value
-
     def validate_dec(self, text_to_insert, all_text, bit_width):
-        max_value = 2 ** int(self.bit_length) - 1
-        max_width = len(str(max_value))
-        return len(all_text) <= max_width and text_to_insert.isdecimal() and (all_text == '' or (int(all_text) <= max_value))
+        max_width = len(str(self.register.max_value))
+        return len(all_text) <= max_width and text_to_insert.isdecimal() and (all_text == '' or (int(all_text) <= self.register.max_value))
 
     def validate_hex(self, text_to_insert, all_text, bit_width):
-        max_value = 2 ** int(self.bit_length) - 1
-        max_width = len(str(max_value))
+        max_width = len(str(self.register.max_value))
         value = int(self.hex_to_dec(all_text))
-        return len(all_text) <= max_width and all(c in hexdigits for c in text_to_insert) and value <= max_value
+        return len(all_text) <= max_width and all(c in hexdigits for c in text_to_insert) and value <= self.register.max_value
 
     def validate_bin(self, text_to_insert, all_text, bit_width):
-        return len(all_text) <= (self.bit_length + self.bit_length // 4 - 1) and all(c in '01' + DELIMITER for c in text_to_insert)
+        return len(all_text) <= (self.register.bit_length + self.register.bit_length // 4 - 1) and all(c in '01' + DELIMITER for c in text_to_insert)
 
     def add_field_button_click(self):
         field = {}
@@ -224,13 +197,13 @@ class RegCalcWindow:
         self.update_gui_values()
 
     def update_gui_values(self):
-        self.set_text(self.dec_entry, self.state['dec_string'])
-        self.set_text(self.bin_entry, self.state['bin_string_delim'])
-        self.set_text(self.hex_entry, self.state['hex_string'])
+        self.set_text(self.dec_entry, self.register.dec_string)
+        self.set_text(self.bin_entry, self.register.bin_string_delim)
+        self.set_text(self.hex_entry, self.register.hex_string)
         for field in self.fields:
-            bin_start = max(0, self.bit_length - field['settings']['start'] - 1)
-            bin_end = max(0, self.bit_length - field['settings']['end'])
-            bin_string = self.state['bin_string'][bin_start:bin_end]
+            bin_start = max(0, self.register.bit_length - field['settings']['start'] - 1)
+            bin_end = max(0, self.register.bit_length - field['settings']['end'])
+            bin_string = self.register.bin_string[bin_start:bin_end]
             if len(bin_string) == 0:
                 field['gui']['bin_entry'].config(state = 'disabled')
                 field['gui']['dec_entry'].config(state = 'disabled')
@@ -255,8 +228,8 @@ class RegCalcWindow:
             delimiters_before_selection = self.bin_entry.get()[0:start_index].count(DELIMITER)
             delimiters_in_selection = self.bin_entry.get()[start_index:end_index].count(DELIMITER)
 
-            start_index = self.bit_length - (start_index - delimiters_before_selection) - 1
-            end_index = self.bit_length - (end_index - delimiters_before_selection - delimiters_in_selection)
+            start_index = self.register.bit_length - (start_index - delimiters_before_selection) - 1
+            end_index = self.register.bit_length - (end_index - delimiters_before_selection - delimiters_in_selection)
 
             self.field_selection['start'] = start_index
             self.field_selection['end'] = end_index
@@ -279,20 +252,20 @@ class RegCalcWindow:
     def hex_field_keyrelease(self, field):
         value_string = field['gui']['hex_entry'].get()
         field_value = (int(value_string, 16) if value_string != '' else 0) << field['settings']['end']
-        value = (self.state['value'] & field['settings']['mask']) | field_value
-        self.update_state(value)
+        value = (self.register.value & field['settings']['mask']) | field_value
+        self.update_value(value)
 
     def dec_field_keyrelease(self, field):
         value_string = field['gui']['dec_entry'].get()
         field_value = (int(value_string) if value_string != '' else 0) << field['settings']['end']
-        value = (self.state['value'] & field['settings']['mask']) | field_value
-        self.update_state(value)
+        value = (self.register.value & field['settings']['mask']) | field_value
+        self.update_value(value)
 
     def bin_field_keyrelease(self, field):
         value_string = field['gui']['bin_entry'].get()
         field_value = (int(value_string, 2) if value_string != '' else 0) << field['settings']['end']
-        value = (self.state['value'] & field['settings']['mask']) | field_value
-        self.update_state(value)
+        value = (self.register.value & field['settings']['mask']) | field_value
+        self.update_value(value)
 
     def name_field_keyrelease(self, field):
         field['settings']['name'] = field['gui']['name'].get()
@@ -301,17 +274,17 @@ class RegCalcWindow:
     def hex_keyrelease(self, entry):
         value_string = entry.get()
         value = int(value_string, 16) if value_string != '' else 0
-        self.update_state(value)
+        self.update_value(value)
 
     def dec_keyrelease(self, event):
         value_string = self.dec_entry.get()
         value = int(value_string) if value_string != '' else 0
-        self.update_state(value)
+        self.update_value(value)
 
     def bin_keyrelease(self, event):
         value_string = self.bin_entry.get()
         value = int(value_string.replace(DELIMITER, ""), 2) if value_string != '' else 0
-        self.update_state(value)
+        self.update_value(value)
 
     @staticmethod
     def hex_to_dec(value: str) -> str:
