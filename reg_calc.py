@@ -7,7 +7,8 @@ from string import hexdigits
 from contextlib import suppress
 
 DELIMITER = '_'
-
+NAME_FIELD_WIDTH=30
+BIT_LENGTHS=['16 bits', '32 bits', '64 bits']
 
 class RegCalcWindow:
     def __init__(self) -> None:
@@ -23,6 +24,9 @@ class RegCalcWindow:
         self.root.title('Register Calculator')
         self.root.resizable(False, False)
 
+        self.bit_length_string = tk.StringVar(self.root)
+        self.bit_length_string.set(BIT_LENGTHS[1])
+        
         self.topframe = Frame(self.root)
         self.topframe.pack(padx=1, pady=1)
         self.bottomframe = Frame(self.root)
@@ -39,6 +43,9 @@ class RegCalcWindow:
                                    validatecommand=(self.root.register(self.validate_bin), "%S", "%P", 32 + 7))
 
         self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled', command=self.add_field_button_click)
+        self.swap_button = ttk.Button(self.topframe, text='Swap bytes', width=15, state='enabled', command=self.swap_bytes_button_click)
+        
+        self.bit_length_menu = ttk.OptionMenu(self.topframe, self.bit_length_string, BIT_LENGTHS[1], *BIT_LENGTHS)
 
         self.hex_entry.bind('<Any-KeyRelease>',  lambda event: self.hex_keyrelease(self.hex_entry))
         self.dec_entry.bind('<Any-KeyRelease>', self.dec_keyrelease)
@@ -47,9 +54,11 @@ class RegCalcWindow:
 
         self.hex_entry.grid(row=0, column=1, padx=1, pady=1)
         self.dec_entry.grid(row=0, column=3, padx=1, pady=1)
-        self.add_button.grid(row=0, column=4, padx=1, pady=1)
+        self.swap_button.grid(row=0, column=4, padx=1, pady=1)
+        self.bit_length_menu.grid(row=0, column=5, padx=1, pady=1)
         self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=5)
-
+        self.add_button.grid(row=1, column=5, padx=1, pady=1)
+        
         self.menu = tk.Menu(self.root, tearoff=0)
         self.menu.add_command(label='Export fields', command=self.export_dialog)
         self.menu.add_command(label='Import fields', command=self.import_dialog)
@@ -64,6 +73,18 @@ class RegCalcWindow:
         self.state = {}
         self.update_state(0)
 
+    @property
+    def bit_length(self):
+        return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 4)
+    
+    def swap_bytes_button_click(self):
+        value = self.state['value']
+        self.update_state(((value >> 24) & 0x000000FF) | \
+                          ((value <<  8) & 0x00FF0000) | \
+                          ((value >>  8) & 0x0000FF00) | \
+                          ((value << 24) & 0xFF000000))
+        print(self.bit_length)
+    
     def on_expose(self, event):
         widget = event.widget
         if not widget.children:
@@ -176,7 +197,7 @@ class RegCalcWindow:
                                       validatecommand=(self.root.register(self.validate_hex), "%S", "%P", bit_width)),
                'dec_entry': ttk.Entry(self.bottomframe, width=max_bin_width, justify='right', font='TkFixedFont', validate='key',
                                       validatecommand=(self.root.register(self.validate_dec), "%S", "%P", bit_width)),
-               'name': ttk.Entry(self.bottomframe, width=20, justify='left', font='TkFixedFont')}
+               'name': ttk.Entry(self.bottomframe, width=NAME_FIELD_WIDTH, justify='left', font='TkFixedFont')}
 
         field = {'settings': settings, 'gui': gui}
 
@@ -237,7 +258,7 @@ class RegCalcWindow:
             self.add_button.configure(text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
                                       state='enabled')
 
-    def adjust_entry_length(self, entry, minimum=20):
+    def adjust_entry_length(self, entry, minimum=NAME_FIELD_WIDTH):
         length = len(entry.get())
         if length > minimum:
             entry.configure(width=length)
