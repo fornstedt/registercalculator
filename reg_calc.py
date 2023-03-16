@@ -1,5 +1,6 @@
 import sys
 import json
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, Frame, filedialog, END, INSERT, SEL_FIRST, SEL_LAST
 from string import hexdigits
@@ -79,6 +80,7 @@ class RegCalcWindow:
                                                                ('All files', '*.*')])) is not None:
             self.export_fields(export_file)
             export_file.close()
+            self.root.title(Path(export_file.name).stem)
 
     def export_fields(self, file):
         export_fields = []
@@ -91,6 +93,7 @@ class RegCalcWindow:
                                                              ('All files', '*.*')])) is not None:
             self.import_fields(import_file)
             import_file.close()
+            self.root.title(Path(import_file.name).stem)
 
     def import_fields(self, file):
         self.reset_fields()
@@ -154,6 +157,8 @@ class RegCalcWindow:
 
     def add_field(self, settings: dict):
         if len(self.fields) == 0:
+            #ttk.Label(self.bottomframe, text='Register name', borderwidth=5).grid(row=0, column=0, padx=1, pady=1, sticky='E', columnspan=4)
+            #ttk.Entry(self.bottomframe, width=20, justify='left', font='TkFixedFont').grid(row=0, column=4, padx=1, pady=1, sticky='W')
             ttk.Label(self.bottomframe, text='Bits', borderwidth=5).grid(row=0, column=0, padx=1, pady=1)
             ttk.Label(self.bottomframe, text='Bin', borderwidth=5).grid(row=0, column=1, padx=1, pady=1, sticky='E')
             ttk.Label(self.bottomframe, text='Hex', borderwidth=5).grid(row=0, column=2, padx=1, pady=1, sticky='E')
