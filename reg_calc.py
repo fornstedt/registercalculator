@@ -12,6 +12,15 @@ DELIMITER = '_'
 NAME_FIELD_WIDTH=30
 BIT_LENGTHS=['8 bits', '16 bits', '32 bits']
 
+class GuiField(Field):
+    def __init__(self, frame: Frame, register: Register, start_bit: int, end_bit: int) -> None:
+        super().__init__(register, start_bit, end_bit)
+        self.dec_entry = ttk.Entry(frame, width=self.max_dec_width, justify='right', font='TkFixedFont', validate='key',
+                                   validatecommand=(self.root.register(self.validate_dec), "%S", "%P", self.max_dec_width))
+        self.hex_entry = None
+        self.bin_entry = None
+        self.bit_label = ttk.Label(frame, text=f'{start_bit}:{end_bit}', borderwidth=5)
+    
 class RegCalcWindow:
     def __init__(self) -> None:
 
@@ -75,8 +84,12 @@ class RegCalcWindow:
 
         self.refresh_gui()
 
+    @property
+    def number_of_bits(self):
+        return 2**(BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
+        
     def bit_selection_clicked(self, _):
-        self.register.value = self.register.value & (2**self.register.bit_length - 1)
+        self.register.bit_length = self.number_of_bits
         self.refresh_gui()
 
     def swap_bytes_button_click(self):
