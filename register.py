@@ -12,18 +12,22 @@ class RegisterBase:
 
     @property
     def dec(self) -> str:
+        '''Return the decimal string representing current value'''
         return f'{self._value}'
 
     @property
     def hex(self) -> str:
+        '''Return the hexadecimal string representing current value'''
         return f'{self._value:X}'
 
     @property
     def bin(self) -> str:
+        '''Return the binary string representing current value'''
         return f'{self._value:0{self._bit_length}b}'
 
     @property
     def bin_delimited(self) -> str:
+        '''Return the hexadecimal string representing current value, delimited each fourth bit'''
         string = self.bin
 
         groups = []
@@ -35,6 +39,7 @@ class RegisterBase:
 
     @property
     def max(self) -> int:
+        '''Max value of the register or field'''
         return (2 ** self._bit_length) - 1
 
     @property
@@ -55,6 +60,7 @@ class Register(RegisterBase):
         super().__init__(value, bit_length)
         self.bit_length = bit_length
         self.fields = []
+        self._observers = []
 
     @property
     def value(self) -> int:
@@ -64,8 +70,7 @@ class Register(RegisterBase):
     def value(self, value: int) -> None:
         self._value = value
         self._truncate()
-        for field in self.fields:
-            field.update_value()
+        self._notify_observers()
 
     @RegisterBase.bit_length.setter
     def bit_length(self, bit_length: int) -> None:
@@ -74,6 +79,7 @@ class Register(RegisterBase):
             self._truncate()
         else:
             raise ValueError('Bit length must be 8, 16 or 32')
+        self._notify_observers()
 
     def swap_bytes(self) -> None:
         if self._bit_length == 16:
@@ -86,6 +92,7 @@ class Register(RegisterBase):
                            ((self._value << 0x18) & 0xFF000000))
         else:
             pass
+        self._notify_observers()
 
     def _truncate(self) -> None:
         self._value = self._value & self.max
@@ -95,6 +102,15 @@ class Register(RegisterBase):
 
     def clear_fields(self) -> None:
         self.fields.clear()
+        
+    def register_observer(self, callback):
+        self._observers.append(callback)
+        
+    def _notify_observers(self):
+        for field in self.fields:
+            field.update_value()
+        for callback in self._observers:
+            callback()
 
 
 class Field(RegisterBase):

@@ -1,5 +1,6 @@
 import sys
 import json
+from typing import Union
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, Frame, filedialog, END, INSERT, SEL_FIRST, SEL_LAST
@@ -12,15 +13,109 @@ DELIMITER = '_'
 NAME_FIELD_WIDTH=30
 BIT_LENGTHS=['8 bits', '16 bits', '32 bits']
 
+
+class HexEntry(ttk.Entry):
+    def __init__(self, frame: Frame, field: Union[Register,Field]):
+        self.frame = frame
+        self.field = field
+        super().__init__(frame, width=self.field.max_hex_width, justify='right', font='TkFixedFont', validate='key',
+                         validatecommand=(frame.register(self.validate), "%S", "%P"))
+        
+
+    def validate(self, text_to_insert: str, all_text: str) -> bool:
+        if not all(c in hexdigits for c in text_to_insert):
+            return False
+        if not len(all_text) <= self.field.max_hex_width:
+            return False
+        if not ((all_text == '') or (int(all_text, 16) <= self.field.max)):
+            return False
+        return True
+
+    def update(self):
+        index = self.index(INSERT)
+        self.config(state='enabled')
+        self.delete(0, END)
+        self.insert(0, self.field.hex)
+        self.icursor(index)
+
+
+class DecEntry(ttk.Entry):
+    def __init__(self, frame: Frame, field: Union[Register,Field]):
+        self.frame = frame
+        self.field = field
+        super().__init__(frame, width=self.field.max_dec_width, justify='right', font='TkFixedFont', validate='key',
+                         validatecommand=(frame.register(self.validate), "%S", "%P"))
+
+    def validate(self, text_to_insert: str, all_text: str) -> bool:
+        if not text_to_insert.isdecimal():
+            return False
+        if not len(all_text) <= self.field.max_dec_width:
+            return False
+        if not ((all_text == '') or (int(all_text) <= self.field.max)):
+            return False
+        return True
+
+    def update(self):
+        index = self.index(INSERT)
+        self.config(state='enabled')
+        self.delete(0, END)
+        self.insert(0, self.field.dec)
+        self.icursor(index)
+
+
+class BinEntry(ttk.Entry):
+    def __init__(self, frame: Frame, field: Union[Register,Field], with_delimiter=False):
+        self.with_delimiter = with_delimiter
+        self.frame = frame
+        self.field = field
+        width = self.field.bit_length
+        
+        if self.with_delimiter:
+            width += self.field.bit_length // 4 - 1
+            
+        super().__init__(frame, width=width, justify='right', font='TkFixedFont', validate='key',
+                         validatecommand=(frame.register(self.validate), "%S", "%P"))
+
+    def validate(self, text_to_insert: str, all_text: str) -> bool:
+        allowed_characters = '01'
+        allowed_length = self.field.bit_length
+            
+        if self.with_delimiter:
+            allowed_characters += DELIMITER
+            allowed_length += self.field.bit_length // 4 - 1
+        
+        if not all(c in allowed_characters for c in text_to_insert):
+            return False
+        if not len(all_text) <= allowed_length:
+            return False
+        return True
+
+    def update(self):
+        index = self.index(INSERT)
+        self.config(state='enabled')
+        self.delete(0, END)
+        self.insert(0, self.field.bin)
+        self.icursor(index)
+
+
 class GuiField(Field):
-    def __init__(self, frame: Frame, register: Register, start_bit: int, end_bit: int) -> None:
-        super().__init__(register, start_bit, end_bit)
-        self.dec_entry = ttk.Entry(frame, width=self.max_dec_width, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.validate_dec), "%S", "%P", self.max_dec_width))
-        self.hex_entry = None
-        self.bin_entry = None
-        self.bit_label = ttk.Label(frame, text=f'{start_bit}:{end_bit}', borderwidth=5)
-    
+    def __init__(self, frame: Frame, field: Register, start_bit: int, end_bit: int) -> None:
+        super().__init__(field, start_bit, end_bit)
+        
+        self.field = Field(field, start_bit, end_bit)
+        self.bit_label = ttk.Label(frame, text=f'{start_bit}:{end_bit}', borderwidth=5)        
+        self.bin_entry = BinEntry(frame, field)
+        self.hex_entry = HexEntry(frame, field)
+        self.dec_entry = DecEntry(frame, field)
+        self.name_entry = ttk.Entry(frame, width=NAME_FIELD_WIDTH, justify='left', font='TkFixedFont')
+        
+    def display(self, row):
+        self.bit_label.grid(row=row, column=0, padx=1, pady=1)
+        self.bin_entry.grid(row=row, column=1, sticky='E', padx=3, pady=1)
+        self.hex_entry.grid(row=row, column=2, sticky='E', padx=3, pady=1)
+        self.dec_entry.grid(row=row, column=3, sticky='E', padx=3, pady=1)
+        self.name_entry.grid(row=row, column=4, sticky='W', padx=3, pady=1, columnspan=2)
+
 class RegCalcWindow:
     def __init__(self) -> None:
 
@@ -47,12 +142,9 @@ class RegCalcWindow:
         ttk.Label(self.topframe, text="Hex", borderwidth=5).grid(row=0, column=0)
         ttk.Label(self.topframe, text="Dec", borderwidth=5).grid(row=0, column=2)
 
-        self.hex_entry = ttk.Entry(self.topframe, width=8, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.validate_hex), "%S", "%P", self.register.max_hex_width))
-        self.dec_entry = ttk.Entry(self.topframe, width=10, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.validate_dec), "%S", "%P", self.register.max_dec_width))
-        self.bin_entry = ttk.Entry(self.topframe, width=39, justify='right', font='TkFixedFont', validate='key',
-                                   validatecommand=(self.root.register(self.validate_bin), "%S", "%P", self.register.max_bin_width))
+        self.hex_entry = HexEntry(self.topframe, self.register)
+        self.dec_entry = DecEntry(self.topframe, self.register)
+        self.bin_entry = BinEntry(self.topframe, self.register, with_delimiter=True)
 
         self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled', command=self.add_field_button_click)
         self.swap_button = ttk.Button(self.topframe, text='Swap bytes', width=15, state='enabled', command=self.swap_bytes_button_click)
@@ -139,16 +231,6 @@ class RegCalcWindow:
         finally:
             self.menu.grab_release()
 
-    def validate_dec(self, text_to_insert, all_text, width):
-        return len(all_text) <= int(width) and text_to_insert.isdecimal() and (all_text == '' or (int(all_text) <= self.register.max))
-
-    def validate_hex(self, text_to_insert, all_text, width):
-        value = int(self.hex_to_dec(all_text))
-        return len(all_text) <= int(width) and all(c in hexdigits for c in text_to_insert) and value <= self.register.max
-
-    def validate_bin(self, text_to_insert, all_text, width):
-        return len(all_text) <= (self.register.bit_length + self.register.bit_length // 4 - 1) and all(c in '01' + DELIMITER for c in text_to_insert)
-
     def add_field_button_click(self):
         field = Field(self.register, self.field_selection['start'], self.field_selection['end'])
         self.add_field(field)
@@ -165,12 +247,9 @@ class RegCalcWindow:
             ttk.Label(self.bottomframe, text='Name', borderwidth=5).grid(row=0, column=4, padx=3, pady=1, sticky='W')
 
         gui = {'bit_label': ttk.Label(self.bottomframe, text=f'{field.start}:{field.end}', borderwidth=5),
-               'bin_entry': ttk.Entry(self.bottomframe, width=field.max_bin_width, justify='right', font='TkFixedFont', validate='key',
-                                      validatecommand=(self.root.register(self.validate_bin), "%S", "%P", field.max_bin_width)),
-               'hex_entry': ttk.Entry(self.bottomframe, width=field.max_hex_width, justify='right', font='TkFixedFont', validate='key',
-                                      validatecommand=(self.root.register(self.validate_hex), "%S", "%P", field.max_hex_width)),
-               'dec_entry': ttk.Entry(self.bottomframe, width=field.max_dec_width, justify='right', font='TkFixedFont', validate='key',
-                                      validatecommand=(self.root.register(self.validate_dec), "%S", "%P", field.max_dec_width)),
+               'bin_entry': BinEntry(self.bottomframe, field),
+               'hex_entry': HexEntry(self.bottomframe, field),
+               'dec_entry': DecEntry(self.bottomframe, field),
                'name': ttk.Entry(self.bottomframe, width=NAME_FIELD_WIDTH, justify='left', font='TkFixedFont')}
 
         field_gui = {'field': field, 'gui': gui}
@@ -196,9 +275,9 @@ class RegCalcWindow:
         self.set_text(self.hex_entry, self.register.hex)
         for field in self.fields:
             try:
-                self.set_text(field['gui']['bin_entry'], field['field'].bin)
-                self.set_text(field['gui']['dec_entry'], field['field'].dec)
-                self.set_text(field['gui']['hex_entry'], field['field'].hex)
+                field['gui']['bin_entry'].update()
+                field['gui']['dec_entry'].update()
+                field['gui']['hex_entry'].update()
                 self.set_text(field['gui']['name'], 'Not Implemented')
                 self.adjust_entry_length(field['gui']['name'])
             except ValueError:
@@ -274,12 +353,6 @@ class RegCalcWindow:
         value_string = self.bin_entry.get()
         self.register.value = int(value_string.replace(DELIMITER, ""), 2) if value_string != '' else 0
         self.refresh_gui()
-
-    @staticmethod
-    def hex_to_dec(value: str) -> str:
-        dec_value = '0'
-        with suppress(ValueError): dec_value = f'{int(value, 16)}'
-        return dec_value
 
     @staticmethod
     def set_text(entry, text):
