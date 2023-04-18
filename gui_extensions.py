@@ -8,6 +8,7 @@ NAME_FIELD_WIDTH = 30
 
 
 class HexEntry(ttk.Entry):
+    """A ttk Entry that accepts only hexadecimal values and is connected to a register"""
     def __init__(self, frame: Frame, field: Union[Register, Field]):
         self._frame = frame
         self._field = field
@@ -42,10 +43,12 @@ class HexEntry(ttk.Entry):
         self.icursor(index)
 
     def unregister(self):
+        """Unregister the entry from register changes"""
         self._field.unregister_observer(self._observer_callback)
 
 
 class DecEntry(ttk.Entry):
+    """A ttk Entry that accepts only decimal values and is connected to a register"""
     def __init__(self, frame: Frame, field: Union[Register, Field]):
         self._frame = frame
         self._field = field
@@ -80,10 +83,12 @@ class DecEntry(ttk.Entry):
         self.icursor(index)
 
     def unregister(self):
+        """Unregister the entry from register changes"""
         self._field.unregister_observer(self._observer_callback)
 
 
 class BinEntry(ttk.Entry):
+    """A ttk Entry that accepts only binary values and is connected to a register"""
     def __init__(self, frame: Frame, field: Union[Register, Field], with_delimiter=False):
         self._with_delimiter = with_delimiter
         self._frame = frame
@@ -129,10 +134,12 @@ class BinEntry(ttk.Entry):
         self.icursor(index)
 
     def unregister(self):
+        """Unregister the entry from register changes"""
         self._field.unregister_observer(self._observer_callback)
 
 
-class GuiField(Field):
+class FieldGui(Field):
+    """A ttk gui object that represent a register field on a row"""
     def __init__(self, frame: Frame, register: Register, start_bit: int, end_bit: int, name: str = None) -> None:
         super().__init__(register, start_bit, end_bit)
 
@@ -146,6 +153,7 @@ class GuiField(Field):
             self.name_entry.insert(0, name)
 
     def grid(self, row):
+        """Position the widget in the parent at a specific row"""
         self.bit_label.grid(row=row, column=0, padx=1, pady=1)
         self.bin_entry.grid(row=row, column=1, sticky='E', padx=3, pady=1)
         self.hex_entry.grid(row=row, column=2, sticky='E', padx=3, pady=1)
@@ -154,20 +162,12 @@ class GuiField(Field):
         self._register.notify_observers()
 
     def _name_field_keyrelease(self, _):
-        # field['settings']['name'] = field['gui']['name'].get()
         self._adjust_entry_length()
 
     def _adjust_entry_length(self, minimum=NAME_FIELD_WIDTH):
         length = len(self.name_entry.get())
         if length > minimum:
             self.name_entry.configure(width=length)
-
-    # def _set_name(self, text):
-    #     index = self.name_entry.index(INSERT)
-    #     self.name_entry.config(state='enabled')
-    #     self.name_entry.delete(0, END)
-    #     self.name_entry.insert(0, text)
-    #     self.name_entry.icursor(index)
 
     @property
     def settings(self) -> dict:
@@ -180,6 +180,7 @@ class GuiField(Field):
         return settings
 
     def unregister(self):
+        """Unregister the widget from register changes"""
         self.hex_entry.unregister()
         self.dec_entry.unregister()
         self.bin_entry.unregister()
