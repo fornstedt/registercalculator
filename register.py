@@ -1,10 +1,16 @@
+from abc import ABC, abstractmethod
+
 DELIMITER = '_'
 
 
-class RegisterBase:
-    def __init__(self, value: int, bit_length: int) -> None:
-        self._value = value
+class RegisterBase(ABC):
+    def __init__(self, bit_length: int) -> None:
         self._bit_length = bit_length
+
+    @property
+    @abstractmethod
+    def value(self) -> int:
+        pass
 
     @property
     def bit_length(self) -> int:
@@ -13,17 +19,17 @@ class RegisterBase:
     @property
     def dec(self) -> str:
         '''Return the decimal string representing current value'''
-        return f'{self._value}'
+        return f'{self.value}'
 
     @property
     def hex(self) -> str:
         '''Return the hexadecimal string representing current value'''
-        return f'{self._value:X}'
+        return f'{self.value:X}'
 
     @property
     def bin(self) -> str:
         '''Return the binary string representing current value'''
-        return f'{self._value:0{self._bit_length}b}'
+        return f'{self.value:0{self._bit_length}b}'
 
     @property
     def bin_delimited(self) -> str:
@@ -57,20 +63,20 @@ class RegisterBase:
 
 class Register(RegisterBase):
     def __init__(self, value=0, bit_length=32) -> None:
-        super().__init__(value, bit_length)
-        self.bit_length = bit_length
-        self.fields = []
+        super().__init__(bit_length)
+        self._register_value = value
         self._observers = []
+        self.bit_length = bit_length
 
     @property
     def value(self) -> int:
-        return self._value
+        return self._register_value
 
     @value.setter
     def value(self, value: int) -> None:
-        self._value = value
+        self._register_value = value
         self._truncate()
-        self._notify_observers()
+        self.notify_observers()
 
     @RegisterBase.bit_length.setter
     def bit_length(self, bit_length: int) -> None:
@@ -79,43 +85,42 @@ class Register(RegisterBase):
             self._truncate()
         else:
             raise ValueError('Bit length must be 8, 16 or 32')
-        self._notify_observers()
+        self.notify_observers()
 
     def swap_bytes(self) -> None:
+        """Swap all bytes of the current value."""
         if self._bit_length == 16:
-            self._value = (((self._value >> 0x08) & 0x00FF) |
-                           ((self._value << 0x08) & 0xFF00))
+            self._register_value = (((self._register_value >> 0x08) & 0x00FF) |
+                                    ((self._register_value << 0x08) & 0xFF00))
         elif self._bit_length == 32:
-            self._value = (((self._value >> 0x18) & 0x000000FF) |
-                           ((self._value << 0x08) & 0x00FF0000) |
-                           ((self._value >> 0x08) & 0x0000FF00) |
-                           ((self._value << 0x18) & 0xFF000000))
+            self._register_value = (((self._register_value >> 0x18) & 0x000000FF) |
+                                    ((self._register_value << 0x08) & 0x00FF0000) |
+                                    ((self._register_value >> 0x08) & 0x0000FF00) |
+                                    ((self._register_value << 0x18) & 0xFF000000))
         else:
             pass
-        self._notify_observers()
+        self.notify_observers()
 
     def _truncate(self) -> None:
-        self._value = self._value & self.max
+        self._register_value = self._register_value & self.max
 
-    def _register_field(self, field) -> None:
-        self.fields.append(field)
-
-    def clear_fields(self) -> None:
-        self.fields.clear()
-        
     def register_observer(self, callback):
+        """Register a callback to be called when the register value is changed."""
         self._observers.append(callback)
-        
-    def _notify_observers(self):
-        for field in self.fields:
-            field.update_value()
+
+    def unregister_observer(self, callback):
+        """Unregister a callback"""
+        self._observers.remove(callback)
+
+    def notify_observers(self):
+        """Notify all observers about a value change"""
         for callback in self._observers:
             callback()
 
 
 class Field(RegisterBase):
     def __init__(self, register: Register, start_bit: int, end_bit: int) -> None:
-        if ((start_bit > register.bit_length) or (start_bit < 0) or
+        if ((start_bit > register.bit_length - 1) or (start_bit < 0) or
            (end_bit < 0) or (end_bit > start_bit)):
             raise ValueError('Invalid bit configuration.')
 
@@ -125,8 +130,7 @@ class Field(RegisterBase):
         self._end_bit = end_bit
         self._bit_length = start_bit - end_bit + 1
         self._mask = self.max << self._end_bit
-        super().__init__(self.value, bit_length=self._bit_length)
-        self._register._register_field(self)
+        super().__init__(bit_length=self._bit_length)
 
     @property
     def value(self) -> int:
@@ -136,19 +140,26 @@ class Field(RegisterBase):
             raise ValueError("Field is not within its register's bit length.")
 
     @value.setter
-    def value(self, value):
+    def value(self, value: int) -> None:
         if value <= self.max:
             self._register.value = (self._register.value & ~self._mask) | (value << self._end_bit)
         else:
             raise ValueError('Value cannot fit into field.')
 
     @property
-    def start(self):
+    def start_bit(self):
+        """Return the number of the first bit included in the field"""
         return self._start_bit
 
     @property
-    def end(self):
+    def end_bit(self):
+        """Return the number of the last bit included in the field"""
         return self._end_bit
 
-    def update_value(self):
-        self._value = (self._register.value & self._mask) >> self._end_bit
+    def register_observer(self, callback) -> None:
+        """Register a callback to be called when the register value is changed."""
+        self._register.register_observer(callback)
+
+    def unregister_observer(self, callback) -> None:
+        """UnRegister a callback."""
+        self._register.unregister_observer(callback)

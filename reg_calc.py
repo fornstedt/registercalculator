@@ -1,120 +1,14 @@
 import sys
 import json
-from typing import Union
 from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, Frame, filedialog, END, INSERT, SEL_FIRST, SEL_LAST
-from string import hexdigits
-from contextlib import suppress
+from tkinter import ttk, Frame, filedialog, SEL_FIRST, SEL_LAST
 
-from register import Register, Field
+from register import Register, DELIMITER
+from gui_extensions import BinEntry, DecEntry, HexEntry, GuiField
 
-DELIMITER = '_'
-NAME_FIELD_WIDTH=30
-BIT_LENGTHS=['8 bits', '16 bits', '32 bits']
+BIT_LENGTHS = ['8 bits', '16 bits', '32 bits']
 
-
-class HexEntry(ttk.Entry):
-    def __init__(self, frame: Frame, field: Union[Register,Field]):
-        self.frame = frame
-        self.field = field
-        super().__init__(frame, width=self.field.max_hex_width, justify='right', font='TkFixedFont', validate='key',
-                         validatecommand=(frame.register(self.validate), "%S", "%P"))
-        
-
-    def validate(self, text_to_insert: str, all_text: str) -> bool:
-        if not all(c in hexdigits for c in text_to_insert):
-            return False
-        if not len(all_text) <= self.field.max_hex_width:
-            return False
-        if not ((all_text == '') or (int(all_text, 16) <= self.field.max)):
-            return False
-        return True
-
-    def update(self):
-        index = self.index(INSERT)
-        self.config(state='enabled')
-        self.delete(0, END)
-        self.insert(0, self.field.hex)
-        self.icursor(index)
-
-
-class DecEntry(ttk.Entry):
-    def __init__(self, frame: Frame, field: Union[Register,Field]):
-        self.frame = frame
-        self.field = field
-        super().__init__(frame, width=self.field.max_dec_width, justify='right', font='TkFixedFont', validate='key',
-                         validatecommand=(frame.register(self.validate), "%S", "%P"))
-
-    def validate(self, text_to_insert: str, all_text: str) -> bool:
-        if not text_to_insert.isdecimal():
-            return False
-        if not len(all_text) <= self.field.max_dec_width:
-            return False
-        if not ((all_text == '') or (int(all_text) <= self.field.max)):
-            return False
-        return True
-
-    def update(self):
-        index = self.index(INSERT)
-        self.config(state='enabled')
-        self.delete(0, END)
-        self.insert(0, self.field.dec)
-        self.icursor(index)
-
-
-class BinEntry(ttk.Entry):
-    def __init__(self, frame: Frame, field: Union[Register,Field], with_delimiter=False):
-        self.with_delimiter = with_delimiter
-        self.frame = frame
-        self.field = field
-        width = self.field.bit_length
-        
-        if self.with_delimiter:
-            width += self.field.bit_length // 4 - 1
-            
-        super().__init__(frame, width=width, justify='right', font='TkFixedFont', validate='key',
-                         validatecommand=(frame.register(self.validate), "%S", "%P"))
-
-    def validate(self, text_to_insert: str, all_text: str) -> bool:
-        allowed_characters = '01'
-        allowed_length = self.field.bit_length
-            
-        if self.with_delimiter:
-            allowed_characters += DELIMITER
-            allowed_length += self.field.bit_length // 4 - 1
-        
-        if not all(c in allowed_characters for c in text_to_insert):
-            return False
-        if not len(all_text) <= allowed_length:
-            return False
-        return True
-
-    def update(self):
-        index = self.index(INSERT)
-        self.config(state='enabled')
-        self.delete(0, END)
-        self.insert(0, self.field.bin)
-        self.icursor(index)
-
-
-class GuiField(Field):
-    def __init__(self, frame: Frame, field: Register, start_bit: int, end_bit: int) -> None:
-        super().__init__(field, start_bit, end_bit)
-        
-        self.field = Field(field, start_bit, end_bit)
-        self.bit_label = ttk.Label(frame, text=f'{start_bit}:{end_bit}', borderwidth=5)        
-        self.bin_entry = BinEntry(frame, field)
-        self.hex_entry = HexEntry(frame, field)
-        self.dec_entry = DecEntry(frame, field)
-        self.name_entry = ttk.Entry(frame, width=NAME_FIELD_WIDTH, justify='left', font='TkFixedFont')
-        
-    def display(self, row):
-        self.bit_label.grid(row=row, column=0, padx=1, pady=1)
-        self.bin_entry.grid(row=row, column=1, sticky='E', padx=3, pady=1)
-        self.hex_entry.grid(row=row, column=2, sticky='E', padx=3, pady=1)
-        self.dec_entry.grid(row=row, column=3, sticky='E', padx=3, pady=1)
-        self.name_entry.grid(row=row, column=4, sticky='W', padx=3, pady=1, columnspan=2)
 
 class RegCalcWindow:
     def __init__(self) -> None:
@@ -146,15 +40,15 @@ class RegCalcWindow:
         self.dec_entry = DecEntry(self.topframe, self.register)
         self.bin_entry = BinEntry(self.topframe, self.register, with_delimiter=True)
 
-        self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled', command=self.add_field_button_click)
-        self.swap_button = ttk.Button(self.topframe, text='Swap bytes', width=15, state='enabled', command=self.swap_bytes_button_click)
+        self.add_button = ttk.Button(self.topframe, text='Add field', width=15, state='disabled',
+                                     command=self._add_field_button_click)
+        self.swap_button = ttk.Button(self.topframe, text='Swap bytes', width=15, state='enabled',
+                                      command=self._swap_bytes_button_click)
 
-        self.bit_length_menu = ttk.OptionMenu(self.topframe, self.bit_length_string, BIT_LENGTHS[2], *BIT_LENGTHS, command=self.bit_selection_clicked)
+        self.bit_length_menu = ttk.OptionMenu(self.topframe, self.bit_length_string, BIT_LENGTHS[2],
+                                              *BIT_LENGTHS, command=self._bit_selection_clicked)
 
-        self.hex_entry.bind('<Any-KeyRelease>',  lambda event: self.hex_keyrelease(self.hex_entry))
-        self.dec_entry.bind('<Any-KeyRelease>', self.dec_keyrelease)
-        self.bin_entry.bind('<Any-KeyRelease>', self.bin_keyrelease)
-        self.bin_entry.bind('<Motion>', self.bin_mouse_motion)
+        self.bin_entry.bind('<Motion>', self._mouse_motion)
 
         self.hex_entry.grid(row=0, column=1, padx=1, pady=1)
         self.dec_entry.grid(row=0, column=3, padx=1, pady=1)
@@ -164,81 +58,84 @@ class RegCalcWindow:
         self.add_button.grid(row=1, column=5, padx=1, pady=1)
 
         self.menu = tk.Menu(self.root, tearoff=0)
-        self.menu.add_command(label='Export fields', command=self.export_dialog)
-        self.menu.add_command(label='Import fields', command=self.import_dialog)
+        self.menu.add_command(label='Export fields', command=self._export_dialog)
+        self.menu.add_command(label='Import fields', command=self._import_dialog)
         self.menu.add_separator()
-        self.menu.add_command(label='Reset fields', command=self.reset_fields)
-        self.root.bind(self.right_click_button, self.show_menu)
-        self.bottomframe.bind('<Expose>', self.on_expose)
+        self.menu.add_command(label='Reset fields', command=self._reset_fields)
+        self.root.bind(self.right_click_button, self._show_menu)
+        self.bottomframe.bind('<Expose>', self._on_expose)
 
         self.field_selection = {'start': None, 'end': None}
         self.fields = []
 
-        self.refresh_gui()
+        self._refresh_gui()
 
     @property
-    def number_of_bits(self):
+    def _number_of_bits(self):
         return 2**(BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
-        
-    def bit_selection_clicked(self, _):
-        self.register.bit_length = self.number_of_bits
-        self.refresh_gui()
 
-    def swap_bytes_button_click(self):
+    def _bit_selection_clicked(self, _):
+        self.register.bit_length = self._number_of_bits
+        self.swap_button.configure(state='disabled' if self.register.bit_length == 8 else 'enabled')
+        self._refresh_gui()
+
+    def _swap_bytes_button_click(self):
         self.register.swap_bytes()
-        self.refresh_gui()
+        self._refresh_gui()
 
-    def on_expose(self, event):
+    def _on_expose(self, event):
         widget = event.widget
         if not widget.children:
             widget.configure(height=1)
 
-    def reset_fields(self):
-        for widget in self.bottomframe.winfo_children():
-            widget.destroy()
+    def _reset_fields(self):
+        for field in self.fields:
+            field.unregister()
         self.fields.clear()
 
-    def export_dialog(self):
+        for widget in self.bottomframe.winfo_children():
+            widget.destroy()
+
+    def _export_dialog(self):
         if (export_file := filedialog.asksaveasfile(defaultextension='.json',
                                                     filetypes=[('JSON-files', '*.json'),
                                                                ('All files', '*.*')])) is not None:
-            self.export_fields(export_file)
+            self._export_fields(export_file)
             export_file.close()
             self.root.title(Path(export_file.name).stem)
 
-    def export_fields(self, file):
+    def _export_fields(self, file):
         export_fields = []
         for field in self.fields:
-            export_fields.append(field['settings'])
+            export_fields.append(field.settings)
         file.write(json.dumps(export_fields, indent=4))
 
-    def import_dialog(self):
+    def _import_dialog(self):
         if (import_file := filedialog.askopenfile(filetypes=[('JSON-files', '*.json'),
                                                              ('All files', '*.*')])) is not None:
-            self.import_fields(import_file)
+            self._import_fields(import_file)
             import_file.close()
             self.root.title(Path(import_file.name).stem)
 
-    def import_fields(self, file):
-        self.reset_fields()
+    def _import_fields(self, file):
+        self._reset_fields()
         import_fields = json.loads(file.read())
         for field in import_fields:
-            self.add_field(field)
+            self._add_field(field['start'], field['end'], field['name'])
 
-    def show_menu(self, event):
+    def _show_menu(self, event):
         try:
             self.menu.post(event.x_root, event.y_root)
         finally:
             self.menu.grab_release()
 
-    def add_field_button_click(self):
-        field = Field(self.register, self.field_selection['start'], self.field_selection['end'])
-        self.add_field(field)
+    def _add_field_button_click(self):
+        self._add_field(self.field_selection['start'], self.field_selection['end'])
         self.bin_entry.selection_clear()
-        self.update_selection()
-        self.update_add_field_button()
+        self._update_selection()
+        self._update_add_field_button()
 
-    def add_field(self, field: Field):
+    def _add_field(self, start_bit: int, end_bit: int, name=None):
         if len(self.fields) == 0:
             ttk.Label(self.bottomframe, text='Bits', borderwidth=5).grid(row=0, column=0, padx=1, pady=1)
             ttk.Label(self.bottomframe, text='Bin', borderwidth=5).grid(row=0, column=1, padx=1, pady=1, sticky='E')
@@ -246,51 +143,19 @@ class RegCalcWindow:
             ttk.Label(self.bottomframe, text='Dec', borderwidth=5).grid(row=0, column=3, padx=1, pady=1, sticky='E')
             ttk.Label(self.bottomframe, text='Name', borderwidth=5).grid(row=0, column=4, padx=3, pady=1, sticky='W')
 
-        gui = {'bit_label': ttk.Label(self.bottomframe, text=f'{field.start}:{field.end}', borderwidth=5),
-               'bin_entry': BinEntry(self.bottomframe, field),
-               'hex_entry': HexEntry(self.bottomframe, field),
-               'dec_entry': DecEntry(self.bottomframe, field),
-               'name': ttk.Entry(self.bottomframe, width=NAME_FIELD_WIDTH, justify='left', font='TkFixedFont')}
-
-        field_gui = {'field': field, 'gui': gui}
-
-        field_gui['gui']['hex_entry'].bind('<Any-KeyRelease>', lambda event: self.hex_field_keyrelease(field_gui))
-        field_gui['gui']['dec_entry'].bind('<Any-KeyRelease>', lambda event: self.dec_field_keyrelease(field_gui))
-        field_gui['gui']['bin_entry'].bind('<Any-KeyRelease>', lambda event: self.bin_field_keyrelease(field_gui))
-        field_gui['gui']['name'].bind('<Any-KeyRelease>', lambda event: self.name_field_keyrelease(field_gui))
-
         next_row = len(self.fields) + 1
-        field_gui['gui']['bit_label'].grid(row=next_row, column=0, padx=1, pady=1)
-        field_gui['gui']['bin_entry'].grid(row=next_row, column=1, sticky='E', padx=3, pady=1)
-        field_gui['gui']['hex_entry'].grid(row=next_row, column=2, sticky='E', padx=3, pady=1)
-        field_gui['gui']['dec_entry'].grid(row=next_row, column=3, sticky='E', padx=3, pady=1)
-        field_gui['gui']['name'].grid(row=next_row, column=4, sticky='W', padx=3, pady=1, columnspan=2)
+        gui_field = GuiField(self.bottomframe, self.register, start_bit, end_bit, name)
+        gui_field.grid(next_row)
+        self.fields.append(gui_field)
 
-        self.fields.append(field_gui)
-        self.refresh_gui()
+    def _refresh_gui(self):
+        self.register.notify_observers()
 
-    def refresh_gui(self):
-        self.set_text(self.dec_entry, self.register.dec)
-        self.set_text(self.bin_entry, self.register.bin_delimited)
-        self.set_text(self.hex_entry, self.register.hex)
-        for field in self.fields:
-            try:
-                field['gui']['bin_entry'].update()
-                field['gui']['dec_entry'].update()
-                field['gui']['hex_entry'].update()
-                self.set_text(field['gui']['name'], 'Not Implemented')
-                self.adjust_entry_length(field['gui']['name'])
-            except ValueError:
-                field['gui']['bin_entry'].config(state = 'disabled')
-                field['gui']['dec_entry'].config(state = 'disabled')
-                field['gui']['hex_entry'].config(state = 'disabled')
-                field['gui']['name'].config(state = 'disabled')
+    def _mouse_motion(self, _):
+        self._update_selection()
+        self._update_add_field_button()
 
-    def bin_mouse_motion(self, _):
-        self.update_selection()
-        self.update_add_field_button()
-
-    def update_selection(self):
+    def _update_selection(self):
         if self.bin_entry.selection_present():
             start_index = self.bin_entry.index(SEL_FIRST)
             end_index = self.bin_entry.index(SEL_LAST)
@@ -307,77 +172,30 @@ class RegCalcWindow:
             self.field_selection['start'] = None
             self.field_selection['end'] = None
 
-    def update_add_field_button(self):
+    def _update_add_field_button(self):
         if self.field_selection['start'] is None or self.field_selection['end'] is None:
             self.add_button.configure(text='Add field', state='disabled')
         else:
             self.add_button.configure(text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
                                       state='enabled')
 
-    def adjust_entry_length(self, entry, minimum=NAME_FIELD_WIDTH):
-        length = len(entry.get())
-        if length > minimum:
-            entry.configure(width=length)
-
-    def hex_field_keyrelease(self, field):
-        value_string = field['gui']['hex_entry'].get()
-        field['field'].value = int(value_string, 16) if value_string != '' else 0
-        self.refresh_gui()
-
-    def dec_field_keyrelease(self, field):
-        value_string = field['gui']['dec_entry'].get()
-        field['field'].value = int(value_string) if value_string != '' else 0
-        self.refresh_gui()
-
-    def bin_field_keyrelease(self, field):
-        value_string = field['gui']['bin_entry'].get()
-        field['field'].value = int(value_string, 2) if value_string != '' else 0
-        self.refresh_gui()
-
-    def name_field_keyrelease(self, field):
-        #field['settings']['name'] = field['gui']['name'].get()
-        #self.adjust_entry_length(field['gui']['name'])
-        pass
-
-    def hex_keyrelease(self, entry):
-        value_string = entry.get()
-        self.register.value = int(value_string, 16) if value_string != '' else 0
-        self.refresh_gui()
-
-    def dec_keyrelease(self, event):
-        value_string = self.dec_entry.get()
-        self.register.value = int(value_string) if value_string != '' else 0
-        self.refresh_gui()
-
-    def bin_keyrelease(self, event):
-        value_string = self.bin_entry.get()
-        self.register.value = int(value_string.replace(DELIMITER, ""), 2) if value_string != '' else 0
-        self.refresh_gui()
-
-    @staticmethod
-    def set_text(entry, text):
-        index = entry.index(INSERT)
-        entry.config(state='enabled')
-        entry.delete(0, END)
-        entry.insert(0, text)
-        entry.icursor(index)
-
     def show(self):
+        """Show the main window"""
         self.root.mainloop()
 
 
-def main(import_filepath = None):
+def start_register_calculator(import_filepath=None):
     main_window = RegCalcWindow()
 
     if import_filepath:
         with open(import_filepath, 'r', encoding='utf-8') as import_file:
-            main_window.import_fields(import_file)
+            main_window._import_fields(import_file)
 
     main_window.show()
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        main(sys.argv[1])
+        start_register_calculator(sys.argv[1])
     else:
-        main()
+        start_register_calculator()

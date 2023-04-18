@@ -67,8 +67,8 @@ def test_register_byte_swap():
 def test_field_strings():
     reg = Register(0x11223344)
     field = Field(reg, 15, 8)
-    assert field.start == 15
-    assert field.end == 8
+    assert field.start_bit == 15
+    assert field.end_bit == 8
 
     assert field.value == 0x33
     assert field.dec == '51'
