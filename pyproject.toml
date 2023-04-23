@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "registercalculator"
+
+[tool.pytest.ini_options]
+addopts = "--verbose --capture=no"
+testpaths = [
+    "tests",
+]

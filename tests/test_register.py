@@ -1,9 +1,10 @@
 import pytest
-from register import Register, Field
+
+from registercalculator.register import DataField, DataRegister
 
 
 def test_register_strings():
-    reg = Register()
+    reg = DataRegister()
     reg.value = 0x11223344
     assert reg.value == 0x11223344
     assert reg.dec == '287454020'
@@ -13,7 +14,7 @@ def test_register_strings():
 
 
 def test_register_bit_lengths():
-    reg = Register()
+    reg = DataRegister()
     reg.value = 0x11223344
     assert reg.max == 0xFFFFFFFF
     assert reg.bit_length == 32
@@ -30,7 +31,7 @@ def test_register_bit_lengths():
     assert reg.value == 0x44
     assert reg.bin == '01000100'
 
-    reg = Register(0x11223344, 16)
+    reg = DataRegister(0x11223344, 16)
     assert reg.value == 0x3344
 
     reg.value = 0x11223344
@@ -49,7 +50,7 @@ def test_register_bit_lengths():
 
 
 def test_register_byte_swap():
-    reg = Register(0x11223344)
+    reg = DataRegister(0x11223344)
     assert reg.value == 0x11223344
 
     reg.swap_bytes()
@@ -65,8 +66,8 @@ def test_register_byte_swap():
 
 
 def test_field_strings():
-    reg = Register(0x11223344)
-    field = Field(reg, 15, 8)
+    reg = DataRegister(0x11223344)
+    field = DataField(reg, 15, 8)
     assert field.start_bit == 15
     assert field.end_bit == 8
 
@@ -89,8 +90,8 @@ def test_field_strings():
 
 
 def test_field_bit_lengths():
-    reg = Register(0x11223344)
-    field = Field(reg, 15, 8)
+    reg = DataRegister(0x11223344)
+    field = DataField(reg, 15, 8)
     assert field.bit_length == 8
 
     with pytest.raises(AttributeError):
@@ -100,27 +101,27 @@ def test_field_bit_lengths():
 
 
 def test_field_bit_positions():
-    reg = Register(0x11223344)
+    reg = DataRegister(0x11223344)
 
     with pytest.raises(ValueError):
-        _ = Field(reg, 32, 8)
+        _ = DataField(reg, 32, 8)
 
     with pytest.raises(ValueError):
-        _ = Field(reg, 31, -8)
+        _ = DataField(reg, 31, -8)
 
     with pytest.raises(ValueError):
-        _ = Field(reg, 20, 21)
+        _ = DataField(reg, 20, 21)
 
     with pytest.raises(ValueError):
-        _ = Field(reg, -8, -16)
+        _ = DataField(reg, -8, -16)
 
     with pytest.raises(ValueError):
-        _ = Field(reg, -8, 2)
+        _ = DataField(reg, -8, 2)
 
 
 def test_field_registry_changes():
-    reg = Register(0x11223344)
-    field = Field(reg, 23, 16)
+    reg = DataRegister(0x11223344)
+    field = DataField(reg, 23, 16)
     assert field.value == 0x22
 
     reg.value = 0xaabbccdd
@@ -137,8 +138,8 @@ def test_field_registry_changes():
 
 
 def test_field_value_changes():
-    reg = Register(0x11223344)
-    field = Field(reg, 23, 16)
+    reg = DataRegister(0x11223344)
+    field = DataField(reg, 23, 16)
     assert field.value == 0x22
 
     field.value = 0xbb

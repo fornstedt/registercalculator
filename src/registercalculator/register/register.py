@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 DELIMITER = '_'
 
 
-class RegisterBase(ABC):
+class DataRegisterBase(ABC):
     def __init__(self, bit_length: int) -> None:
         self._bit_length = bit_length
 
@@ -61,7 +61,7 @@ class RegisterBase(ABC):
         return self._bit_length
 
 
-class Register(RegisterBase):
+class DataRegister(DataRegisterBase):
     def __init__(self, value=0, bit_length=32) -> None:
         super().__init__(bit_length)
         self._register_value = value
@@ -78,7 +78,7 @@ class Register(RegisterBase):
         self._truncate()
         self.notify_observers()
 
-    @RegisterBase.bit_length.setter
+    @DataRegisterBase.bit_length.setter
     def bit_length(self, bit_length: int) -> None:
         if bit_length in [8, 16, 32]:
             self._bit_length = bit_length
@@ -118,8 +118,8 @@ class Register(RegisterBase):
             callback()
 
 
-class Field(RegisterBase):
-    def __init__(self, register: Register, start_bit: int, end_bit: int) -> None:
+class DataField(DataRegisterBase):
+    def __init__(self, register: DataRegister, start_bit: int, end_bit: int) -> None:
         if ((start_bit > register.bit_length - 1) or (start_bit < 0) or
            (end_bit < 0) or (end_bit > start_bit)):
             raise ValueError('Invalid bit configuration.')

@@ -4,19 +4,19 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, Frame, filedialog, SEL_FIRST, SEL_LAST
 
-from register import Register, DELIMITER
-from gui_extensions import BinEntry, DecEntry, HexEntry, FieldGui
+from registercalculator.register import DataRegister, DELIMITER
+from .gui_extensions import BinEntry, DecEntry, HexEntry, FieldGui
 
 BIT_LENGTHS = ['8 bits', '16 bits', '32 bits']
 
 
-class RegCalcWindow:
+class RegisterCalculator:
     def __init__(self, import_filepath=None) -> None:
 
         if sys.platform == 'darwin':
             self.right_click_button = '<Button-2>'
             self.swap_button_width = 11
-            self.add_button_width = 8
+            self.add_button_width = 11  # 8
         else:
             self.right_click_button = '<Button-3>'
             self.swap_button_width = 15
@@ -25,7 +25,7 @@ class RegCalcWindow:
         self.window_title = 'Register Calculator'
 
         # Setup main window
-        self.register = Register()
+        self.register = DataRegister()
         self.root = tk.Tk()
         self.root.rowconfigure(0, minsize=20)
         self.root.rowconfigure(1, minsize=30)
@@ -64,8 +64,8 @@ class RegCalcWindow:
         # Gui layout
         self.hex_entry.grid(row=0, column=1, padx=1, pady=1)
         self.dec_entry.grid(row=0, column=3, padx=1, pady=1)
-        self.swap_button.grid(row=0, column=4, padx=1, pady=1)
-        self.bit_length_menu.grid(row=0, column=5, padx=1, pady=1)
+        self.swap_button.grid(row=0, column=5, padx=1, pady=1)
+        self.bit_length_menu.grid(row=0, column=4, padx=1, pady=1)
         self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=5)
         self.add_button.grid(row=1, column=5, padx=1, pady=1)
 
@@ -205,12 +205,3 @@ class RegCalcWindow:
     def show(self):
         """Show the main window"""
         self.root.mainloop()
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        main_window = RegCalcWindow(sys.argv[1])
-    else:
-        main_window = RegCalcWindow()
-
-    main_window.show()

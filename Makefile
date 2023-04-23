@@ -1,11 +1,9 @@
-TARGET=reg_calc
-TARGET_EXE=dist/$(TARGET).exe
+TARGET=dist/RegisterCalculator
 
-all: $(TARGET_EXE)
+all: $(TARGET)
 
-$(TARGET_EXE): $(TARGET).py
-	pyinstaller -y --onefile --noconsole $<
-	pyinstaller -y --noconsole $<
+$(TARGET): src/run_calculator.py
+	pyinstaller -y --onefile --noconsole --name $(notdir $(TARGET)) $<
 
 clean:
-	rm $(TARGET_EXE)
+	rm $(TARGET)

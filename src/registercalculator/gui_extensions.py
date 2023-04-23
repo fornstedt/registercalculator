@@ -2,14 +2,14 @@ from typing import Union
 from tkinter import ttk, Frame, END, INSERT
 from string import hexdigits
 
-from register import Register, Field, DELIMITER
+from registercalculator.register import DataRegister, DataField, DELIMITER
 
 NAME_FIELD_WIDTH = 30
 
 
 class HexEntry(ttk.Entry):
     """A ttk Entry that accepts only hexadecimal values and is connected to a register"""
-    def __init__(self, frame: Frame, field: Union[Register, Field]):
+    def __init__(self, frame: Frame, field: Union[DataRegister, DataField]):
         self._frame = frame
         self._field = field
         super().__init__(frame, width=self._field.max_hex_width, justify='right', font='TkFixedFont',
@@ -49,7 +49,7 @@ class HexEntry(ttk.Entry):
 
 class DecEntry(ttk.Entry):
     """A ttk Entry that accepts only decimal values and is connected to a register"""
-    def __init__(self, frame: Frame, field: Union[Register, Field]):
+    def __init__(self, frame: Frame, field: Union[DataRegister, DataField]):
         self._frame = frame
         self._field = field
         super().__init__(frame, width=self._field.max_dec_width, justify='right', font='TkFixedFont',
@@ -89,7 +89,7 @@ class DecEntry(ttk.Entry):
 
 class BinEntry(ttk.Entry):
     """A ttk Entry that accepts only binary values and is connected to a register"""
-    def __init__(self, frame: Frame, field: Union[Register, Field], with_delimiter=False):
+    def __init__(self, frame: Frame, field: Union[DataRegister, DataField], with_delimiter=False):
         self._with_delimiter = with_delimiter
         self._frame = frame
         self._field = field
@@ -138,9 +138,9 @@ class BinEntry(ttk.Entry):
         self._field.unregister_observer(self._observer_callback)
 
 
-class FieldGui(Field):
+class FieldGui(DataField):
     """A ttk gui object that represent a register field on a row"""
-    def __init__(self, frame: Frame, register: Register, start_bit: int, end_bit: int, name: str = None) -> None:
+    def __init__(self, frame: Frame, register: DataRegister, start_bit: int, end_bit: int, name: str = None) -> None:
         super().__init__(register, start_bit, end_bit)
 
         self.bit_label = ttk.Label(frame, text=f'{start_bit}:{end_bit}', borderwidth=5)
