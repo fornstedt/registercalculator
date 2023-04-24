@@ -1,9 +1,12 @@
+"""Register module tests"""
+
 import pytest
 
 from registercalculator.register import DataField, DataRegister
 
 
 def test_register_strings():
+    """Test the register module's hex/dex/bin string properties"""
     reg = DataRegister()
     reg.value = 0x11223344
     assert reg.value == 0x11223344
@@ -14,6 +17,7 @@ def test_register_strings():
 
 
 def test_register_bit_lengths():
+    """Test the register bit length functionality"""
     reg = DataRegister()
     reg.value = 0x11223344
     assert reg.max == 0xFFFFFFFF
@@ -50,6 +54,7 @@ def test_register_bit_lengths():
 
 
 def test_register_byte_swap():
+    """Test the register byte swap functionality"""
     reg = DataRegister(0x11223344)
     assert reg.value == 0x11223344
 
@@ -66,6 +71,7 @@ def test_register_byte_swap():
 
 
 def test_field_strings():
+    """Test the field module's hex*/dec/bin string properties"""
     reg = DataRegister(0x11223344)
     field = DataField(reg, 15, 8)
     assert field.start_bit == 15
@@ -90,6 +96,7 @@ def test_field_strings():
 
 
 def test_field_bit_lengths():
+    """Test the field bit length functionality"""
     reg = DataRegister(0x11223344)
     field = DataField(reg, 15, 8)
     assert field.bit_length == 8
@@ -101,6 +108,7 @@ def test_field_bit_lengths():
 
 
 def test_field_bit_positions():
+    """Test invalid bit ranges for the field module"""
     reg = DataRegister(0x11223344)
 
     with pytest.raises(ValueError):
@@ -120,6 +128,7 @@ def test_field_bit_positions():
 
 
 def test_field_registry_changes():
+    """Test that a field reflects changes in a register"""
     reg = DataRegister(0x11223344)
     field = DataField(reg, 23, 16)
     assert field.value == 0x22
@@ -138,6 +147,7 @@ def test_field_registry_changes():
 
 
 def test_field_value_changes():
+    """Test that a register reflects changes in a field"""
     reg = DataRegister(0x11223344)
     field = DataField(reg, 23, 16)
     assert field.value == 0x22

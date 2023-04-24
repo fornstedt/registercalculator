@@ -1,3 +1,5 @@
+"""Script to run the RegisterCalculator package"""
+
 import sys
 from registercalculator import RegisterCalculator
 

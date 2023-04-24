@@ -1,3 +1,5 @@
+"""A tk based GUI to view and manipulate a register with fields"""
+
 import sys
 import json
 from pathlib import Path
@@ -11,6 +13,8 @@ BIT_LENGTHS = ['8 bits', '16 bits', '32 bits']
 
 
 class RegisterCalculator:
+    """A register calculator GUI"""
+
     def __init__(self, import_filepath=None) -> None:
 
         if sys.platform == 'darwin':

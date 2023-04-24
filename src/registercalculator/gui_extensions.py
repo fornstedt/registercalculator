@@ -1,3 +1,5 @@
+"""Module which extends ttk entries with hex/dec/bin functionality"""
+
 from typing import Union
 from tkinter import ttk, Frame, END, INSERT
 from string import hexdigits
@@ -9,6 +11,7 @@ NAME_FIELD_WIDTH = 30
 
 class HexEntry(ttk.Entry):
     """A ttk Entry that accepts only hexadecimal values and is connected to a register"""
+
     def __init__(self, frame: Frame, field: Union[DataRegister, DataField]):
         self._frame = frame
         self._field = field
@@ -49,6 +52,7 @@ class HexEntry(ttk.Entry):
 
 class DecEntry(ttk.Entry):
     """A ttk Entry that accepts only decimal values and is connected to a register"""
+
     def __init__(self, frame: Frame, field: Union[DataRegister, DataField]):
         self._frame = frame
         self._field = field
@@ -89,6 +93,7 @@ class DecEntry(ttk.Entry):
 
 class BinEntry(ttk.Entry):
     """A ttk Entry that accepts only binary values and is connected to a register"""
+
     def __init__(self, frame: Frame, field: Union[DataRegister, DataField], with_delimiter=False):
         self._with_delimiter = with_delimiter
         self._frame = frame
@@ -140,6 +145,7 @@ class BinEntry(ttk.Entry):
 
 class FieldGui(DataField):
     """A ttk gui object that represent a register field on a row"""
+
     def __init__(self, frame: Frame, register: DataRegister, start_bit: int, end_bit: int, name: str = None) -> None:
         super().__init__(register, start_bit, end_bit)
 

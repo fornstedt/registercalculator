@@ -1,39 +1,43 @@
+"""Module for handling data registers and register fieldss"""
+
 from abc import ABC, abstractmethod
 
 DELIMITER = '_'
 
 
 class DataRegisterBase(ABC):
+    """Abstract class with common functionality for both registers and register fields"""
     def __init__(self, bit_length: int) -> None:
         self._bit_length = bit_length
 
     @property
     @abstractmethod
     def value(self) -> int:
-        pass
+        """The current value"""
 
     @property
     def bit_length(self) -> int:
+        """The bit length of the maximum value"""
         return self._bit_length
 
     @property
     def dec(self) -> str:
-        '''Return the decimal string representing current value'''
+        """Return the decimal string representing current value"""
         return f'{self.value}'
 
     @property
     def hex(self) -> str:
-        '''Return the hexadecimal string representing current value'''
+        """Return the hexadecimal string representing current value"""
         return f'{self.value:X}'
 
     @property
     def bin(self) -> str:
-        '''Return the binary string representing current value'''
+        """Return the binary string representing current value"""
         return f'{self.value:0{self._bit_length}b}'
 
     @property
     def bin_delimited(self) -> str:
-        '''Return the hexadecimal string representing current value, delimited each fourth bit'''
+        """Return the hexadecimal string representing current value, delimited each fourth bit"""
         string = self.bin
 
         groups = []
@@ -45,23 +49,28 @@ class DataRegisterBase(ABC):
 
     @property
     def max(self) -> int:
-        '''Max value of the register or field'''
+        """Max value of the register or field"""
         return (2 ** self._bit_length) - 1
 
     @property
     def max_dec_width(self) -> int:
+        """The maximum decimal value string width"""
         return len(f'{self.max}')
 
     @property
     def max_hex_width(self) -> int:
+        """The maximum hexadecimal value string width"""
         return len(f'{self.max:X}')
 
     @property
     def max_bin_width(self) -> int:
+        """The maximum binary value string width"""
         return self._bit_length
 
 
 class DataRegister(DataRegisterBase):
+    """Class to handle a data register"""
+
     def __init__(self, value=0, bit_length=32) -> None:
         super().__init__(bit_length)
         self._register_value = value
@@ -119,6 +128,8 @@ class DataRegister(DataRegisterBase):
 
 
 class DataField(DataRegisterBase):
+    """Class to handle a data register field"""
+
     def __init__(self, register: DataRegister, start_bit: int, end_bit: int) -> None:
         if ((start_bit > register.bit_length - 1) or (start_bit < 0) or
            (end_bit < 0) or (end_bit > start_bit)):
