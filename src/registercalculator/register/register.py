@@ -2,11 +2,12 @@
 
 from abc import ABC, abstractmethod
 
-DELIMITER = '_'
+DELIMITER = "_"
 
 
 class DataRegisterBase(ABC):
     """Abstract class with common functionality for both registers and register fields"""
+
     def __init__(self, bit_length: int) -> None:
         self._bit_length = bit_length
 
@@ -23,17 +24,17 @@ class DataRegisterBase(ABC):
     @property
     def dec(self) -> str:
         """Return the decimal string representing current value"""
-        return f'{self.value}'
+        return f"{self.value}"
 
     @property
     def hex(self) -> str:
         """Return the hexadecimal string representing current value"""
-        return f'{self.value:X}'
+        return f"{self.value:X}"
 
     @property
     def bin(self) -> str:
         """Return the binary string representing current value"""
-        return f'{self.value:0{self._bit_length}b}'
+        return f"{self.value:0{self._bit_length}b}"
 
     @property
     def bin_delimited(self) -> str:
@@ -42,7 +43,7 @@ class DataRegisterBase(ABC):
 
         groups = []
         for i in range(0, len(string), 4):
-            groups.append(string[i:i+4])
+            groups.append(string[i : i + 4])
         string = DELIMITER.join(groups)
 
         return string
@@ -50,17 +51,17 @@ class DataRegisterBase(ABC):
     @property
     def max(self) -> int:
         """Max value of the register or field"""
-        return (2 ** self._bit_length) - 1
+        return (2**self._bit_length) - 1
 
     @property
     def max_dec_width(self) -> int:
         """The maximum decimal value string width"""
-        return len(f'{self.max}')
+        return len(f"{self.max}")
 
     @property
     def max_hex_width(self) -> int:
         """The maximum hexadecimal value string width"""
-        return len(f'{self.max:X}')
+        return len(f"{self.max:X}")
 
     @property
     def max_bin_width(self) -> int:
@@ -93,19 +94,22 @@ class DataRegister(DataRegisterBase):
             self._bit_length = bit_length
             self._truncate()
         else:
-            raise ValueError('Bit length must be 8, 16 or 32')
+            raise ValueError("Bit length must be 8, 16 or 32")
         self.notify_observers()
 
     def swap_bytes(self) -> None:
         """Swap all bytes of the current value."""
         if self._bit_length == 16:
-            self._register_value = (((self._register_value >> 0x08) & 0x00FF) |
-                                    ((self._register_value << 0x08) & 0xFF00))
+            self._register_value = ((self._register_value >> 0x08) & 0x00FF) | (
+                (self._register_value << 0x08) & 0xFF00
+            )
         elif self._bit_length == 32:
-            self._register_value = (((self._register_value >> 0x18) & 0x000000FF) |
-                                    ((self._register_value << 0x08) & 0x00FF0000) |
-                                    ((self._register_value >> 0x08) & 0x0000FF00) |
-                                    ((self._register_value << 0x18) & 0xFF000000))
+            self._register_value = (
+                ((self._register_value >> 0x18) & 0x000000FF)
+                | ((self._register_value << 0x08) & 0x00FF0000)
+                | ((self._register_value >> 0x08) & 0x0000FF00)
+                | ((self._register_value << 0x18) & 0xFF000000)
+            )
         else:
             pass
         self.notify_observers()
@@ -131,9 +135,13 @@ class DataField(DataRegisterBase):
     """Class to handle a data register field"""
 
     def __init__(self, register: DataRegister, start_bit: int, end_bit: int) -> None:
-        if ((start_bit > register.bit_length - 1) or (start_bit < 0) or
-           (end_bit < 0) or (end_bit > start_bit)):
-            raise ValueError('Invalid bit configuration.')
+        if (
+            (start_bit > register.bit_length - 1)
+            or (start_bit < 0)
+            or (end_bit < 0)
+            or (end_bit > start_bit)
+        ):
+            raise ValueError("Invalid bit configuration.")
 
         self._register = register
 
@@ -153,9 +161,11 @@ class DataField(DataRegisterBase):
     @value.setter
     def value(self, value: int) -> None:
         if value <= self.max:
-            self._register.value = (self._register.value & ~self._mask) | (value << self._end_bit)
+            self._register.value = (self._register.value & ~self._mask) | (
+                value << self._end_bit
+            )
         else:
-            raise ValueError('Value cannot fit into field.')
+            raise ValueError("Value cannot fit into field.")
 
     @property
     def start_bit(self):
@@ -172,5 +182,5 @@ class DataField(DataRegisterBase):
         self._register.register_observer(callback)
 
     def unregister_observer(self, callback) -> None:
-        """UnRegister a callback."""
+        """Unregister a callback."""
         self._register.unregister_observer(callback)

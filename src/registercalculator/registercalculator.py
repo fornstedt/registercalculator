@@ -1,32 +1,32 @@
 """A tk based GUI to view and manipulate a register with fields"""
 
-import sys
 import json
-from pathlib import Path
+import sys
 import tkinter as tk
-from tkinter import ttk, Frame, filedialog, SEL_FIRST, SEL_LAST
+from pathlib import Path
+from tkinter import SEL_FIRST, SEL_LAST, Frame, filedialog, ttk
 
-from registercalculator.register import DataRegister, DELIMITER
-from .gui_extensions import BinEntry, DecEntry, HexEntry, FieldGui
+from registercalculator.register import DELIMITER, DataRegister
 
-BIT_LENGTHS = ['8 bits', '16 bits', '32 bits']
+from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry
+
+BIT_LENGTHS = ["8 bits", "16 bits", "32 bits"]
 
 
 class RegisterCalculator:
     """A register calculator GUI"""
 
     def __init__(self, import_filepath=None) -> None:
-
-        if sys.platform == 'darwin':
-            self.right_click_button = '<Button-2>'
+        if sys.platform == "darwin":
+            self.right_click_button = "<Button-2>"
             self.swap_button_width = 11
             self.add_button_width = 11  # 8
         else:
-            self.right_click_button = '<Button-3>'
+            self.right_click_button = "<Button-3>"
             self.swap_button_width = 15
             self.add_button_width = 15
 
-        self.window_title = 'Register Calculator'
+        self.window_title = "Register Calculator"
 
         # Setup main window
         self.register = DataRegister()
@@ -51,19 +51,34 @@ class RegisterCalculator:
         self.bin_entry = BinEntry(self.topframe, self.register, with_delimiter=True)
 
         # Byte swap button and a button to add new fields
-        self.add_button = ttk.Button(self.topframe, text='Add field', width=self.swap_button_width,
-                                     state='disabled', command=self._add_field_button_click)
-        self.swap_button = ttk.Button(self.topframe, text='Swap bytes', width=self.add_button_width,
-                                      state='enabled', command=self._swap_bytes_button_click)
+        self.add_button = ttk.Button(
+            self.topframe,
+            text="Add field",
+            width=self.swap_button_width,
+            state="disabled",
+            command=self._add_field_button_click,
+        )
+        self.swap_button = ttk.Button(
+            self.topframe,
+            text="Swap bytes",
+            width=self.add_button_width,
+            state="enabled",
+            command=self._swap_bytes_button_click,
+        )
 
         # Dropdown for number of bits
         self.bit_length_string = tk.StringVar(self.root)
         self.bit_length_string.set(BIT_LENGTHS[2])
-        self.bit_length_menu = ttk.OptionMenu(self.topframe, self.bit_length_string, BIT_LENGTHS[2],
-                                              *BIT_LENGTHS, command=self._bit_selection_clicked)
+        self.bit_length_menu = ttk.OptionMenu(
+            self.topframe,
+            self.bit_length_string,
+            BIT_LENGTHS[2],
+            *BIT_LENGTHS,
+            command=self._bit_selection_clicked,
+        )
 
         # Bind mouse movement to handle selection of bits
-        self.bin_entry.bind('<Motion>', self._mouse_motion)
+        self.bin_entry.bind("<Motion>", self._mouse_motion)
 
         # Gui layout
         self.hex_entry.grid(row=0, column=1, padx=1, pady=1)
@@ -75,30 +90,32 @@ class RegisterCalculator:
 
         # Import/export menu
         self.menu = tk.Menu(self.root, tearoff=0)
-        self.menu.add_command(label='Export fields', command=self._export_dialog)
-        self.menu.add_command(label='Import fields', command=self._import_dialog)
+        self.menu.add_command(label="Export fields", command=self._export_dialog)
+        self.menu.add_command(label="Import fields", command=self._import_dialog)
         self.menu.add_separator()
-        self.menu.add_command(label='Reset fields', command=self._reset_fields)
+        self.menu.add_command(label="Reset fields", command=self._reset_fields)
         self.root.bind(self.right_click_button, self._show_menu)
-        self.bottomframe.bind('<Expose>', self._on_expose)
+        self.bottomframe.bind("<Expose>", self._on_expose)
 
         # Reset selection, clear fields and update all entries
-        self.field_selection = {'start': None, 'end': None}
+        self.field_selection = {"start": -1, "end": -1}
         self.fields = []
 
         if import_filepath:
-            with open(import_filepath, 'r', encoding='utf-8') as import_file:
+            with open(import_filepath, "r", encoding="utf-8") as import_file:
                 self._import_fields(import_file)
         else:
             self.register.notify_observers()
 
     @property
     def _number_of_bits(self):
-        return 2**(BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
+        return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
 
     def _bit_selection_clicked(self, _):
         self.register.bit_length = self._number_of_bits
-        self.swap_button.configure(state='disabled' if self.register.bit_length == 8 else 'enabled')
+        self.swap_button.configure(
+            state="disabled" if self.register.bit_length == 8 else "enabled"
+        )
         self.register.notify_observers()
 
     def _swap_bytes_button_click(self):
@@ -112,12 +129,15 @@ class RegisterCalculator:
             self.menu.grab_release()
 
     def _export_dialog(self):
-        if (export_file := filedialog.asksaveasfile(defaultextension='.json',
-                                                    filetypes=[('JSON-files', '*.json'),
-                                                               ('All files', '*.*')])) is not None:
+        if (
+            export_file := filedialog.asksaveasfile(
+                defaultextension=".json",
+                filetypes=[("JSON-files", "*.json"), ("All files", "*.*")],
+            )
+        ) is not None:
             self._export_fields(export_file)
             export_file.close()
-            self.root.title(f'{self.window_title} - {Path(export_file.name).stem}')
+            self.root.title(f"{self.window_title} - {Path(export_file.name).stem}")
 
     def _export_fields(self, file):
         export_fields = []
@@ -126,32 +146,45 @@ class RegisterCalculator:
         file.write(json.dumps(export_fields, indent=4))
 
     def _import_dialog(self):
-        if (import_file := filedialog.askopenfile(filetypes=[('JSON-files', '*.json'),
-                                                             ('All files', '*.*')])) is not None:
+        if (
+            import_file := filedialog.askopenfile(
+                filetypes=[("JSON-files", "*.json"), ("All files", "*.*")]
+            )
+        ) is not None:
             self._import_fields(import_file)
             import_file.close()
 
     def _import_fields(self, file):
         self._reset_fields()
         import_fields = json.loads(file.read())
-        self.root.title(f'{self.window_title} - {Path(file.name).stem}')
+        self.root.title(f"{self.window_title} - {Path(file.name).stem}")
         for field in import_fields:
-            self._add_field(field['start'], field['end'], field['name'])
+            self._add_field(field["start"], field["end"], field["name"])
 
     def _add_field_button_click(self):
-        self._add_field(self.field_selection['start'], self.field_selection['end'])
+        self._add_field(self.field_selection["start"], self.field_selection["end"])
         self.bin_entry.selection_clear()
         self._update_selection()
         self._update_add_field_button()
 
-    def _add_field(self, start_bit: int, end_bit: int, name=None):
+    def _add_field(self, start_bit: int, end_bit: int, name=""):
         # If no previous fields, add labels first
         if len(self.fields) == 0:
-            ttk.Label(self.bottomframe, text='Bits', borderwidth=5).grid(row=0, column=0, padx=1, pady=1)
-            ttk.Label(self.bottomframe, text='Bin', borderwidth=5).grid(row=0, column=1, padx=1, pady=1, sticky='E')
-            ttk.Label(self.bottomframe, text='Hex', borderwidth=5).grid(row=0, column=2, padx=1, pady=1, sticky='E')
-            ttk.Label(self.bottomframe, text='Dec', borderwidth=5).grid(row=0, column=3, padx=1, pady=1, sticky='E')
-            ttk.Label(self.bottomframe, text='Name', borderwidth=5).grid(row=0, column=4, padx=3, pady=1, sticky='W')
+            ttk.Label(self.bottomframe, text="Bits", borderwidth=5).grid(
+                row=0, column=0, padx=1, pady=1
+            )
+            ttk.Label(self.bottomframe, text="Bin", borderwidth=5).grid(
+                row=0, column=1, padx=1, pady=1, sticky="E"
+            )
+            ttk.Label(self.bottomframe, text="Hex", borderwidth=5).grid(
+                row=0, column=2, padx=1, pady=1, sticky="E"
+            )
+            ttk.Label(self.bottomframe, text="Dec", borderwidth=5).grid(
+                row=0, column=3, padx=1, pady=1, sticky="E"
+            )
+            ttk.Label(self.bottomframe, text="Name", borderwidth=5).grid(
+                row=0, column=4, padx=3, pady=1, sticky="W"
+            )
 
         # Create GUI for the field and place it on next available row
         next_row = len(self.fields) + 1
@@ -170,27 +203,42 @@ class RegisterCalculator:
             end_index = self.bin_entry.index(SEL_LAST)
 
             # Count number of delimiters in that selection
-            delimiters_before_selection = self.bin_entry.get()[0:start_index].count(DELIMITER)
-            delimiters_in_selection = self.bin_entry.get()[start_index:end_index].count(DELIMITER)
+            delimiters_before_selection = self.bin_entry.get()[0:start_index].count(
+                DELIMITER
+            )
+            delimiters_in_selection = self.bin_entry.get()[start_index:end_index].count(
+                DELIMITER
+            )
 
             # Calculate bit indexes
-            start_index = self.register.bit_length - (start_index - delimiters_before_selection) - 1
-            end_index = self.register.bit_length - (end_index - delimiters_before_selection - delimiters_in_selection)
+            start_index = (
+                self.register.bit_length
+                - (start_index - delimiters_before_selection)
+                - 1
+            )
+            end_index = self.register.bit_length - (
+                end_index - delimiters_before_selection - delimiters_in_selection
+            )
 
             # Store current selection
-            self.field_selection['start'] = start_index
-            self.field_selection['end'] = end_index
+            self.field_selection["start"] = start_index
+            self.field_selection["end"] = end_index
         else:
-            self.field_selection['start'] = None
-            self.field_selection['end'] = None
+            self.field_selection["start"] = -1
+            self.field_selection["end"] = -1
 
     def _update_add_field_button(self):
         # Update 'Add field' button with selected indexes
-        if self.field_selection['start'] is not None and self.field_selection['end'] is not None:
-            self.add_button.configure(text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
-                                      state='enabled')
+        if (
+            self.field_selection["start"] is not -1
+            and self.field_selection["end"] is not -1
+        ):
+            self.add_button.configure(
+                text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
+                state="enabled",
+            )
         else:
-            self.add_button.configure(text='Add field', state='disabled')
+            self.add_button.configure(text="Add field", state="disabled")
 
     def _on_expose(self, event):
         widget = event.widget

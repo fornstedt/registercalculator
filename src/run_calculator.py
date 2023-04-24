@@ -1,8 +1,8 @@
 """Script to run the RegisterCalculator package"""
 
 import sys
-from registercalculator import RegisterCalculator
 
+from registercalculator import RegisterCalculator
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
