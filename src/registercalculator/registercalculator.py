@@ -3,6 +3,7 @@
 import json
 import sys
 import tkinter as tk
+from math import log
 from pathlib import Path
 from tkinter import SEL_FIRST, SEL_LAST, Frame, filedialog, ttk
 
@@ -111,6 +112,10 @@ class RegisterCalculator:
     def _number_of_bits(self):
         return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
 
+    @staticmethod
+    def _get_dropdown_index(bits: int) -> int:
+        return int(log(bits) / log(2) - 3)
+
     def _bit_selection_clicked(self, _):
         self.register.bit_length = self._number_of_bits
         self.swap_button.configure(
@@ -143,7 +148,9 @@ class RegisterCalculator:
         export_fields = []
         for field in self.fields:
             export_fields.append(field.settings)
-        file.write(json.dumps(export_fields, indent=4))
+
+        export_data = {"bit length": self.register.bit_length, "fields": export_fields}
+        file.write(json.dumps(export_data, indent=4))
 
     def _import_dialog(self):
         if (
@@ -156,9 +163,13 @@ class RegisterCalculator:
 
     def _import_fields(self, file):
         self._reset_fields()
-        import_fields = json.loads(file.read())
+        import_data = json.loads(file.read())
         self.root.title(f"{self.window_title} - {Path(file.name).stem}")
-        for field in import_fields:
+        self.bit_length_string.set(
+            BIT_LENGTHS[self._get_dropdown_index(import_data["bit length"])]
+        )
+        self._bit_selection_clicked(None)
+        for field in import_data["fields"]:
             self._add_field(field["start"], field["end"], field["name"])
 
     def _add_field_button_click(self):
