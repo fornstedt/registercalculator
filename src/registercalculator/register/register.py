@@ -147,8 +147,8 @@ class DataField(DataRegisterBase):
     def value(self) -> int:
         if self._start_bit < self._register.bit_length:
             return (self._register.value & self._mask) >> self._end_bit
-        else:
-            raise ValueError("Field is not within its register's bit length.")
+
+        raise ValueError("Field is not within its register's bit length.")
 
     @value.setter
     def value(self, value: int) -> None:
