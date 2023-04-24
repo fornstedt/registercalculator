@@ -151,6 +151,7 @@ class FieldGui(DataField):
         self.name_entry.bind('<Any-KeyRelease>', self._name_field_keyrelease)
         if name:
             self.name_entry.insert(0, name)
+            self._adjust_entry_length()
 
     def grid(self, row):
         """Position the widget in the parent at a specific row"""
