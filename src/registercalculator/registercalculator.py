@@ -109,7 +109,7 @@ class RegisterCalculator:
             self.register.notify_observers()
 
     @property
-    def _number_of_bits(self):
+    def _selected_number_of_bits(self):
         return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
 
     @staticmethod
@@ -117,7 +117,7 @@ class RegisterCalculator:
         return int(log(bits) / log(2) - 3)
 
     def _bit_selection_clicked(self, _):
-        self.register.bit_length = self._number_of_bits
+        self.register.bit_length = self._selected_number_of_bits
         self.swap_button.configure(
             state="disabled" if self.register.bit_length == 8 else "enabled"
         )
@@ -232,8 +232,18 @@ class RegisterCalculator:
             )
 
             # Store current selection
-            self.field_selection["start"] = start_index
-            self.field_selection["end"] = end_index
+            self.field_selection["start"] = (
+                start_index
+                if self.register.bit_0_is_lsb
+                else self.register.bit_length - start_index - 1
+            )
+
+            self.field_selection["end"] = (
+                end_index
+                if self.register.bit_0_is_lsb
+                else self.register.bit_length - end_index - 1
+            )
+
         else:
             self.field_selection["start"] = -1
             self.field_selection["end"] = -1

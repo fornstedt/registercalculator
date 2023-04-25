@@ -179,7 +179,7 @@ class FieldGui(DataField):
     ) -> None:
         super().__init__(register, start_bit, end_bit)
 
-        self.bit_label = ttk.Label(frame, text=f"{start_bit}:{end_bit}", borderwidth=5)
+        self.bit_label = ttk.Label(frame, borderwidth=5)
         self.bin_entry = BinEntry(frame, self)
         self.hex_entry = HexEntry(frame, self)
         self.dec_entry = DecEntry(frame, self)
@@ -200,6 +200,7 @@ class FieldGui(DataField):
         self.name_entry.grid(
             row=row, column=4, sticky="W", padx=3, pady=1, columnspan=2
         )
+        self.register_observer(self._observer_callback)
         self._register.notify_observers()
 
     def _name_field_keyrelease(self, _):
@@ -225,3 +226,10 @@ class FieldGui(DataField):
         self.hex_entry.unregister()
         self.dec_entry.unregister()
         self.bin_entry.unregister()
+        self.unregister_observer(self._observer_callback)
+
+    def _observer_callback(self):
+        if self.start_bit >= 0 and self.end_bit >= 0:
+            self.bit_label.config(text=f"{self.start_bit}:{self.end_bit}")
+        else:
+            self.bit_label.config(text="N/A")
