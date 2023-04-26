@@ -26,9 +26,9 @@ class RegisterCalculator:
             self.bit_menu_width = 7
         else:
             self.right_click_button = "<Button-3>"
-            self.swap_button_width = 15
-            self.add_button_width = 15
-            self.bit_button_width = 15
+            self.swap_button_width = 10
+            self.add_button_width = 21
+            self.bit_button_width = 21
             self.bit_menu_width = 6
 
         self.window_title = "Register Calculator"
@@ -284,10 +284,7 @@ class RegisterCalculator:
 
     def _update_add_field_button(self):
         # Update 'Add field' button with selected indexes
-        if (
-            self.field_selection["start"] is not -1
-            and self.field_selection["end"] is not -1
-        ):
+        if self.field_selection["start"] != -1 and self.field_selection["end"] != -1:
             self.add_button.configure(
                 text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
                 state="enabled",
