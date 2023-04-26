@@ -72,11 +72,14 @@ class DataRegisterBase(ABC):
 class DataRegister(DataRegisterBase):
     """Class to handle a data register"""
 
-    def __init__(self, value=0, bit_length=32) -> None:
+    def __init__(
+        self, value: int = 0, bit_length: int = 32, bit_0_is_lsb: bool = True
+    ) -> None:
         super().__init__(bit_length)
         self._register_value = value
         self._observers = []
         self.bit_length = bit_length
+        self._bit_0_is_lsb = bit_0_is_lsb
 
     @property
     def value(self) -> int:
@@ -96,6 +99,15 @@ class DataRegister(DataRegisterBase):
         else:
             raise ValueError("Bit length must be 8, 16 or 32")
         self.notify_observers()
+
+    @property
+    def bit_0_is_lsb(self) -> bool:
+        """Return True is bit 0 is LSB"""
+        return self._bit_0_is_lsb
+
+    @bit_0_is_lsb.setter
+    def bit_0_is_lsb(self, is_lsb: bool):
+        self._bit_0_is_lsb = is_lsb
 
     def swap_bytes(self) -> None:
         """Swap all bytes of the current value."""
@@ -135,19 +147,24 @@ class DataField(DataRegisterBase):
     """Class to handle a data register field"""
 
     def __init__(self, register: DataRegister, start_bit: int, end_bit: int) -> None:
+        self._register = register
+
+        if self._register.bit_0_is_lsb:
+            self._start_bit = start_bit
+            self._end_bit = end_bit
+        else:
+            self._start_bit = self._register.bit_length - start_bit - 1
+            self._end_bit = self._register.bit_length - end_bit - 1
+
         if (
-            (start_bit > register.bit_length - 1)
-            or (start_bit < 0)
-            or (end_bit < 0)
-            or (end_bit > start_bit)
+            (self._start_bit > register.bit_length - 1)
+            or (self._start_bit < 0)
+            or (self._end_bit < 0)
+            or (self._end_bit > self._start_bit)
         ):
             raise ValueError("Invalid bit configuration.")
 
-        self._register = register
-
-        self._start_bit = start_bit
-        self._end_bit = end_bit
-        self._bit_length = start_bit - end_bit + 1
+        self._bit_length = self._start_bit - self._end_bit + 1
         self._mask = self.max << self._end_bit
         super().__init__(bit_length=self._bit_length)
 
@@ -170,12 +187,20 @@ class DataField(DataRegisterBase):
     @property
     def start_bit(self):
         """Return the number of the first bit included in the field"""
-        return self._start_bit
+        if self._register.bit_0_is_lsb:
+            return (
+                self._start_bit if self._start_bit < self._register.bit_length else -1
+            )
+        else:
+            return self._register.bit_length - self._start_bit - 1
 
     @property
     def end_bit(self):
         """Return the number of the last bit included in the field"""
-        return self._end_bit
+        if self._register.bit_0_is_lsb:
+            return self._end_bit if self._end_bit < self._register.bit_length else -1
+        else:
+            return self._register.bit_length - self._end_bit - 1
 
     def register_observer(self, callback) -> None:
         """Register a callback to be called when the register value is changed."""

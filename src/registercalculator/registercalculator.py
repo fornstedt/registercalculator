@@ -20,12 +20,16 @@ class RegisterCalculator:
     def __init__(self, import_filepath=None) -> None:
         if sys.platform == "darwin":
             self.right_click_button = "<Button-2>"
-            self.swap_button_width = 11
-            self.add_button_width = 11  # 8
+            self.swap_button_width = 8
+            self.add_button_width = 16
+            self.bit_button_width = 16
+            self.bit_menu_width = 7
         else:
             self.right_click_button = "<Button-3>"
-            self.swap_button_width = 15
-            self.add_button_width = 15
+            self.swap_button_width = 10
+            self.add_button_width = 21
+            self.bit_button_width = 21
+            self.bit_menu_width = 6
 
         self.window_title = "Register Calculator"
 
@@ -43,8 +47,8 @@ class RegisterCalculator:
         self.bottomframe.pack(padx=1, pady=1)
 
         # Entry labels
-        ttk.Label(self.topframe, text="Hex", borderwidth=5).grid(row=0, column=0)
-        ttk.Label(self.topframe, text="Dec", borderwidth=5).grid(row=0, column=2)
+        self.hex_label = ttk.Label(self.topframe, text="Hex", borderwidth=5)
+        self.dec_label = ttk.Label(self.topframe, text="Dec", borderwidth=5)
 
         # Hex, dec and bin entries
         self.hex_entry = HexEntry(self.topframe, self.register)
@@ -55,16 +59,22 @@ class RegisterCalculator:
         self.add_button = ttk.Button(
             self.topframe,
             text="Add field",
-            width=self.swap_button_width,
+            width=self.add_button_width,
             state="disabled",
             command=self._add_field_button_click,
         )
         self.swap_button = ttk.Button(
             self.topframe,
             text="Swap bytes",
-            width=self.add_button_width,
+            width=self.swap_button_width,
             state="enabled",
             command=self._swap_bytes_button_click,
+        )
+        self.bit_button = ttk.Button(
+            self.topframe,
+            width=self.bit_button_width,
+            state="enabled",
+            command=self._bit_order_button_click,
         )
 
         # Dropdown for number of bits
@@ -77,16 +87,20 @@ class RegisterCalculator:
             *BIT_LENGTHS,
             command=self._bit_selection_clicked,
         )
+        self.bit_length_menu.config(width=self.bit_menu_width)
 
         # Bind mouse movement to handle selection of bits
         self.bin_entry.bind("<Motion>", self._mouse_motion)
 
         # Gui layout
+        self.hex_label.grid(row=0, column=0, sticky="E")
         self.hex_entry.grid(row=0, column=1, padx=1, pady=1)
+        self.dec_label.grid(row=0, column=2, sticky="E")
         self.dec_entry.grid(row=0, column=3, padx=1, pady=1)
-        self.swap_button.grid(row=0, column=5, padx=1, pady=1)
-        self.bit_length_menu.grid(row=0, column=4, padx=1, pady=1)
-        self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=5)
+        self.swap_button.grid(row=0, column=4, padx=1, pady=1)
+        self.bit_button.grid(row=0, column=5, padx=1, pady=1)
+        self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=4)
+        self.bit_length_menu.grid(row=1, column=4, padx=1, pady=1)
         self.add_button.grid(row=1, column=5, padx=1, pady=1)
 
         # Import/export menu
@@ -106,10 +120,11 @@ class RegisterCalculator:
             with open(import_filepath, "r", encoding="utf-8") as import_file:
                 self._import_fields(import_file)
         else:
+            self._update_bit_button()
             self.register.notify_observers()
 
     @property
-    def _number_of_bits(self):
+    def _selected_number_of_bits(self):
         return 2 ** (BIT_LENGTHS.index(self.bit_length_string.get()) + 3)
 
     @staticmethod
@@ -117,15 +132,29 @@ class RegisterCalculator:
         return int(log(bits) / log(2) - 3)
 
     def _bit_selection_clicked(self, _):
-        self.register.bit_length = self._number_of_bits
+        self.register.bit_length = self._selected_number_of_bits
         self.swap_button.configure(
             state="disabled" if self.register.bit_length == 8 else "enabled"
         )
+        self._update_bit_button()
         self.register.notify_observers()
 
     def _swap_bytes_button_click(self):
         self.register.swap_bytes()
         self.register.notify_observers()
+
+    def _bit_order_button_click(self):
+        self.register.bit_0_is_lsb = not self.register.bit_0_is_lsb
+        self._update_bit_button()
+        self.register.notify_observers()
+
+    def _update_bit_button(self):
+        new_label = (
+            f"Swap numbering ({self.register.bit_length-1}:0)"
+            if self.register.bit_0_is_lsb
+            else f"Swap numbering (0:{self.register.bit_length-1})"
+        )
+        self.bit_button.config(text=new_label)
 
     def _show_menu(self, event):
         try:
@@ -149,7 +178,11 @@ class RegisterCalculator:
         for field in self.fields:
             export_fields.append(field.settings)
 
-        export_data = {"bit length": self.register.bit_length, "fields": export_fields}
+        export_data = {
+            "bit length": self.register.bit_length,
+            "bit 0 is lsb": self.register.bit_0_is_lsb,
+            "fields": export_fields,
+        }
         file.write(json.dumps(export_data, indent=4))
 
     def _import_dialog(self):
@@ -168,6 +201,7 @@ class RegisterCalculator:
         self.bit_length_string.set(
             BIT_LENGTHS[self._get_dropdown_index(import_data["bit length"])]
         )
+        self.register.bit_0_is_lsb = import_data["bit 0 is lsb"]
         self._bit_selection_clicked(None)
         for field in import_data["fields"]:
             self._add_field(field["start"], field["end"], field["name"])
@@ -232,18 +266,25 @@ class RegisterCalculator:
             )
 
             # Store current selection
-            self.field_selection["start"] = start_index
-            self.field_selection["end"] = end_index
+            self.field_selection["start"] = (
+                start_index
+                if self.register.bit_0_is_lsb
+                else self.register.bit_length - start_index - 1
+            )
+
+            self.field_selection["end"] = (
+                end_index
+                if self.register.bit_0_is_lsb
+                else self.register.bit_length - end_index - 1
+            )
+
         else:
             self.field_selection["start"] = -1
             self.field_selection["end"] = -1
 
     def _update_add_field_button(self):
         # Update 'Add field' button with selected indexes
-        if (
-            self.field_selection["start"] is not -1
-            and self.field_selection["end"] is not -1
-        ):
+        if self.field_selection["start"] != -1 and self.field_selection["end"] != -1:
             self.add_button.configure(
                 text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
                 state="enabled",
