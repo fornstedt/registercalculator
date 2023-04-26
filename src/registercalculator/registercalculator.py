@@ -3,6 +3,7 @@
 import json
 import sys
 import tkinter as tk
+import webbrowser
 from math import log
 from pathlib import Path
 from tkinter import SEL_FIRST, SEL_LAST, Frame, filedialog, ttk
@@ -11,6 +12,7 @@ from registercalculator.register import DELIMITER, DataRegister
 
 from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry
 
+VERSION = "1.0"
 BIT_LENGTHS = ["8 bits", "16 bits", "32 bits"]
 
 
@@ -109,6 +111,8 @@ class RegisterCalculator:
         self.menu.add_command(label="Import fields", command=self._import_dialog)
         self.menu.add_separator()
         self.menu.add_command(label="Reset fields", command=self._reset_fields)
+        self.menu.add_separator()
+        self.menu.add_command(label="About...", command=self._show_about_popup)
         self.root.bind(self.right_click_button, self._show_menu)
         self.bottomframe.bind("<Expose>", self._on_expose)
 
@@ -309,3 +313,20 @@ class RegisterCalculator:
     def show(self):
         """Show the main window"""
         self.root.mainloop()
+
+    def _show_about_popup(self):
+        window = tk.Toplevel()
+        window.wm_title("About")
+        window.resizable(False, False)
+
+        url = "https://github.com/fornstedt/registercalculator"
+
+        header = tk.Label(window, text=f"RegisterCalculator version {VERSION}")
+        link = tk.Label(window, text=url, fg="blue", cursor="hand2")
+        author = tk.Label(window, text="Eric Fornstedt")
+
+        link.bind("<Button-1>", lambda e: webbrowser.open_new(url))
+
+        header.grid(row=0, column=0, padx=1, pady=1)
+        link.grid(row=1, column=0, padx=5, pady=1)
+        author.grid(row=2, column=0, padx=1, pady=1)
