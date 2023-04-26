@@ -6,7 +6,6 @@ import tkinter as tk
 import webbrowser
 from math import log
 from pathlib import Path
-from textwrap import dedent
 from tkinter import SEL_FIRST, SEL_LAST, Frame, filedialog, ttk
 
 from registercalculator.register import DELIMITER, DataRegister
