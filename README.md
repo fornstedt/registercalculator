@@ -4,7 +4,7 @@
 
 # Register Calculator
 
-The register calculator is a graphical tool intendend to view and manipulate individual bit fields in a data register. Arbitrary bit fields can be added and any value changes in either a field or the main register is reflected everywhere.
+The register calculator is a graphical tool intendend to view and manipulate individual bit fields in a data register. Arbitrary bit fields can be added and a value change in either a field or the main register is reflected everywhere.
 
 ![](https://fornstedt.eu/images/github/registercalculator.png)
 
