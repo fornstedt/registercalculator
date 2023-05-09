@@ -10,7 +10,7 @@ The register calculator is a graphical tool intendend to view and manipulate ind
 
 ### Binaries for latest release:
 * [RegisterCalculator for MacOS](https://github.com/fornstedt/registercalculator/releases/latest/download/RegisterCalculator_MacOS.zip)
-* [RegisterCalculator for Windows](https://github.com/fornstedt/registercalculator/releases/latest/download//RegisterCalculator_Windows.zip)
+* [RegisterCalculator for Windows](https://github.com/fornstedt/registercalculator/releases/latest/download/RegisterCalculator_Windows.zip)
 
 ## Features
 
