@@ -7,6 +7,7 @@ import webbrowser
 from math import log
 from pathlib import Path
 from tkinter import SEL_FIRST, SEL_LAST, Frame, filedialog, ttk
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from registercalculator.register import DELIMITER, DataRegister
 
@@ -37,11 +38,17 @@ class RegisterCalculator:
 
         # Setup main window
         self.register = DataRegister()
-        self.root = tk.Tk()
+        self.root = TkinterDnD.Tk()
         self.root.rowconfigure(0, minsize=20)
         self.root.rowconfigure(1, minsize=30)
         self.root.title(self.window_title)
         self.root.resizable(False, False)
+
+        # Allow dropping of files onto the main window
+        self.root.drop_target_register(DND_FILES)
+
+        # Bind the drop event to a handler
+        self.root.dnd_bind('<<Drop>>', self.drop)
 
         self.topframe = Frame(self.root)
         self.topframe.pack(padx=1, pady=1)
@@ -126,6 +133,17 @@ class RegisterCalculator:
         else:
             self._update_bit_button()
             self.register.notify_observers()
+
+    def drop(self, event):
+        # event.data contains a list of the dropped files (as a string)
+        files = event.data.split()
+
+        for file in files:
+            # Handle each dropped file
+            print(f"Dropped file: {file}")
+            with open(file, "r", encoding="utf-8") as import_file:
+                self._import_fields(import_file)
+            break
 
     @property
     def _selected_number_of_bits(self):
