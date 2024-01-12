@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "registercalculator"
+version = "1.1.0"
 
 [tool.pytest.ini_options]
 addopts = "--verbose --capture=no"
