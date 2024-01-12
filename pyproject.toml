@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "registercalculator"
 description = "Register calculator"
 version = "1.1.0"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
 
 [tool.pytest.ini_options]
 addopts = "--verbose --capture=no"
