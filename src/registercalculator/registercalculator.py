@@ -116,8 +116,9 @@ class RegisterCalculator:
         self.menu = tk.Menu(self.root, tearoff=0)
         self.menu.add_command(label="Export fields", command=self._export_dialog)
         self.menu.add_command(label="Import fields", command=self._import_dialog)
-        self.menu.add_separator()
         self.menu.add_command(label="Reset fields", command=self._reset_fields)
+        self.menu.add_separator()
+        self.menu.add_command(label="Sort fields", command=self._sort_fields)
         self.menu.add_separator()
         self.menu.add_command(label="About...", command=self._show_about_popup)
         self.root.bind(self.right_click_button, self._show_menu)
@@ -226,6 +227,14 @@ class RegisterCalculator:
         self.register.bit_0_is_lsb = import_data["bit 0 is lsb"]
         self._bit_selection_clicked(None)
         for field in import_data["fields"]:
+            self._add_field(field["start"], field["end"], field["name"])
+
+    def _sort_fields(self):
+        sorted_fields = [field.settings for field in self.fields]
+        sorted_fields.sort(key=lambda sorted_fields: sorted_fields["start"], reverse=self.register.bit_0_is_lsb)
+
+        self._reset_fields()
+        for field in sorted_fields:
             self._add_field(field["start"], field["end"], field["name"])
 
     def _add_field_button_click(self):
