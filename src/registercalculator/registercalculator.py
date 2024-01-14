@@ -48,7 +48,7 @@ class RegisterCalculator:
         self.root.drop_target_register(DND_FILES)
 
         # Bind the drop event to a handler
-        self.root.dnd_bind('<<Drop>>', self.drop)
+        self.root.dnd_bind("<<Drop>>", self.drop)
 
         self.topframe = Frame(self.root)
         self.topframe.pack(padx=1, pady=1)
@@ -231,7 +231,10 @@ class RegisterCalculator:
 
     def _sort_fields(self):
         sorted_fields = [field.settings for field in self.fields]
-        sorted_fields.sort(key=lambda sorted_fields: sorted_fields["start"], reverse=self.register.bit_0_is_lsb)
+        sorted_fields.sort(
+            key=lambda sorted_fields: sorted_fields["start"],
+            reverse=self.register.bit_0_is_lsb,
+        )
 
         self._reset_fields()
         for field in sorted_fields:
