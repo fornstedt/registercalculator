@@ -16,7 +16,7 @@ The register calculator is a graphical tool intendend to view and manipulate ind
 
 * Modify register/field using binary, hexadecimal or decimal values.
 * Add any bit range as a new field by selecting the bits in the binary field and click the 'Add field' button.
-* Export or import settings using a json-file.
+* Export and import settings using a json-file. Import using import dialog or drag-and-drop onto main window.
 * Choose bit number order, e.g from 31:0 or 0:31
 * Choose a register bit size of 8, 16 or 32 bits.
 * Swap bytes within the register to handle endianness.

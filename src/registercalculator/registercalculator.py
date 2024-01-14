@@ -13,7 +13,7 @@ from registercalculator.register import DELIMITER, DataRegister
 
 from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry
 
-VERSION = "1.0"
+VERSION = "1.1"
 BIT_LENGTHS = ["8 bits", "16 bits", "32 bits"]
 
 
