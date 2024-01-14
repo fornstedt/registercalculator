@@ -23,6 +23,13 @@ def test_register_bit_lengths():
     assert reg.max == 0xFFFFFFFF
     assert reg.bit_length == 32
 
+    reg.bit_length = 64
+    reg.value = 0x5566778811223344
+    assert reg.bit_length == 64
+    assert reg.max == 0xFFFFFFFFFFFFFFFF
+    assert reg.value == 0x5566778811223344
+    assert reg.bin == "0101010101100110011101111000100000010001001000100011001101000100"
+
     reg.bit_length = 16
     assert reg.bit_length == 16
     assert reg.max == 0xFFFF
@@ -55,19 +62,23 @@ def test_register_bit_lengths():
 
 def test_register_byte_swap():
     """Test the register byte swap functionality"""
-    reg = DataRegister(0x11223344)
-    assert reg.value == 0x11223344
+    reg = DataRegister(0x1122334455667788, bit_length=64)
+    assert reg.value == 0x1122334455667788
 
     reg.swap_bytes()
-    assert reg.value == 0x44332211
+    assert reg.value == 0x8877665544332211
+
+    reg.bit_length = 32
+    reg.swap_bytes()
+    assert reg.value == 0x11223344
 
     reg.bit_length = 16
     reg.swap_bytes()
-    assert reg.value == 0x1122
+    assert reg.value == 0x4433
 
     reg.bit_length = 8
     reg.swap_bytes()
-    assert reg.value == 0x22
+    assert reg.value == 0x33
 
 
 def test_field_strings():
@@ -89,6 +100,50 @@ def test_field_strings():
     assert field.hex == "CC"
     assert field.bin == "11001100"
     assert field.bin_delimited == "1100_1100"
+
+    assert field.max_dec_width == 3
+    assert field.max_hex_width == 2
+    assert field.max_bin_width == 8
+
+    reg = DataRegister(0x1122334455667788, bit_length=64)
+    field = DataField(reg, 47, 40)
+    assert field.start_bit == 47
+    assert field.end_bit == 40
+
+    assert field.value == 0x33
+    assert field.dec == "51"
+    assert field.hex == "33"
+    assert field.bin == "00110011"
+    assert field.bin_delimited == "0011_0011"
+
+    reg.value = 0xAABBCCDDEEFF0011
+    assert field.value == 0xCC
+    assert field.dec == "204"
+    assert field.hex == "CC"
+    assert field.bin == "11001100"
+    assert field.bin_delimited == "1100_1100"
+
+    assert field.max_dec_width == 3
+    assert field.max_hex_width == 2
+    assert field.max_bin_width == 8
+
+    reg.value = 0x1122334455667788
+    field = DataField(reg, 15, 8)
+    assert field.start_bit == 15
+    assert field.end_bit == 8
+
+    assert field.value == 0x77
+    assert field.dec == "119"
+    assert field.hex == "77"
+    assert field.bin == "01110111"
+    assert field.bin_delimited == "0111_0111"
+
+    reg.value = 0xAABBCCDDEEFF0011
+    assert field.value == 0x00
+    assert field.dec == "0"
+    assert field.hex == "0"
+    assert field.bin == "00000000"
+    assert field.bin_delimited == "0000_0000"
 
     assert field.max_dec_width == 3
     assert field.max_hex_width == 2

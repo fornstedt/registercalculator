@@ -93,11 +93,11 @@ class DataRegister(DataRegisterBase):
 
     @DataRegisterBase.bit_length.setter
     def bit_length(self, bit_length: int) -> None:
-        if bit_length in [8, 16, 32]:
+        if bit_length in [8, 16, 32, 64]:
             self._bit_length = bit_length
             self._truncate()
         else:
-            raise ValueError("Bit length must be 8, 16 or 32")
+            raise ValueError("Bit length must be 8, 16, 32 or 64")
         self.notify_observers()
 
     @property
@@ -117,10 +117,21 @@ class DataRegister(DataRegisterBase):
             )
         elif self._bit_length == 32:
             self._register_value = (
-                ((self._register_value >> 0x18) & 0x000000FF)
-                | ((self._register_value << 0x08) & 0x00FF0000)
-                | ((self._register_value >> 0x08) & 0x0000FF00)
-                | ((self._register_value << 0x18) & 0xFF000000)
+                ((self._register_value >> 24) & 0x000000FF)
+                | ((self._register_value >> 8) & 0x0000FF00)
+                | ((self._register_value << 8) & 0x00FF0000)
+                | ((self._register_value << 24) & 0xFF000000)
+            )
+        elif self._bit_length == 64:
+            self._register_value = (
+                ((self._register_value >> 56) & 0x00000000000000FF)
+                | ((self._register_value >> 40) & 0x000000000000FF00)
+                | ((self._register_value >> 24) & 0x0000000000FF0000)
+                | ((self._register_value >> 8) & 0x00000000FF000000)
+                | ((self._register_value << 8) & 0x000000FF00000000)
+                | ((self._register_value << 24) & 0x0000FF0000000000)
+                | ((self._register_value << 40) & 0x00FF000000000000)
+                | ((self._register_value << 56) & 0xFF00000000000000)
             )
         else:
             pass
