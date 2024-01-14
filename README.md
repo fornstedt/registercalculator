@@ -6,7 +6,7 @@
 
 The register calculator is a graphical tool intendend to view and manipulate individual bit fields in a data register. Arbitrary bit fields can be added and a value change in either a field or the main register is reflected everywhere.
 
-![](https://fornstedt.eu/images/github/registercalculator.png)
+![](https://fornstedt.eu/images/github/registercalculator-1.1.png)
 
 ### Binaries for latest release:
 * [RegisterCalculator for MacOS](https://github.com/fornstedt/registercalculator/releases/latest/download/RegisterCalculator_MacOS.zip)
