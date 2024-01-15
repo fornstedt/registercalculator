@@ -58,6 +58,13 @@ class RegisterCalculator:
         # Entry labels
         self.hex_label = ttk.Label(self.topframe, text="Hex", borderwidth=5)
         self.dec_label = ttk.Label(self.topframe, text="Dec", borderwidth=5)
+        self.bin_numbering = ttk.Label(
+            self.topframe,
+            text=self._get_numbering_label(),
+            borderwidth=0,
+            font="TkFixedFont",
+            justify="right",
+        )
 
         # Hex, dec and bin entries
         self.hex_entry = HexEntry(self.topframe, self.register)
@@ -108,9 +115,10 @@ class RegisterCalculator:
         self.dec_entry.grid(row=0, column=3, padx=1, pady=1)
         self.swap_button.grid(row=0, column=4, padx=1, pady=1)
         self.bit_button.grid(row=0, column=5, padx=1, pady=1)
-        self.bin_entry.grid(row=1, column=0, padx=3, pady=1, columnspan=4)
-        self.bit_length_menu.grid(row=1, column=4, padx=1, pady=1)
-        self.add_button.grid(row=1, column=5, padx=1, pady=1)
+        self.bin_entry.grid(row=1, column=0, padx=3, pady=0, columnspan=4)
+        self.bit_length_menu.grid(row=1, column=4, padx=1, pady=0)
+        self.add_button.grid(row=1, column=5, padx=1, pady=0)
+        self.bin_numbering.grid(row=2, column=0, padx=3, pady=0, columnspan=4)
 
         # Import/export menu
         self.menu = tk.Menu(self.root, tearoff=0)
@@ -172,12 +180,33 @@ class RegisterCalculator:
         self.register.notify_observers()
 
     def _update_bit_button(self):
-        new_label = (
+        new_button_label = (
             f"Swap numbering ({self.register.bit_length-1}:0)"
             if self.register.bit_0_is_lsb
             else f"Swap numbering (0:{self.register.bit_length-1})"
         )
-        self.bit_button.config(text=new_label)
+        self.bin_numbering.config(text=self._get_numbering_label())
+        self.bit_button.config(text=new_button_label)
+
+    def _get_numbering_label(self) -> str:
+        label = ""
+        if self.register.bit_length == 8:
+            if self.register.bit_0_is_lsb:
+                label = "                              7       0"
+            else:
+                label = "                              0       7"
+        elif self.register.bit_length == 16:
+            if self.register.bit_0_is_lsb:
+                label = "                    15      8|7       0"
+            else:
+                label = "                    0       7|8      15"
+        elif self.register.bit_length == 32:
+            if self.register.bit_0_is_lsb:
+                label = "31     24|23     16|15      8|7       0"
+            else:
+                label = "0       7|8      15|16     23|24     31"
+
+        return label
 
     def _show_menu(self, event):
         try:
