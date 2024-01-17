@@ -111,7 +111,7 @@ class BinEntry(ttk.Entry):
     ):
         self._with_delimiter = with_delimiter
         self._frame = frame
-        self._field: DataRegister | DataField = field
+        self._field = field
         width = self._field.bit_length
 
         if self._with_delimiter:
