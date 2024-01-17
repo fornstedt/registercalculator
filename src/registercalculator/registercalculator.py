@@ -291,7 +291,7 @@ class RegisterCalculator:
                 row=0, column=3, padx=1, pady=1, sticky="E"
             )
             ttk.Label(self.bottomframe, text="Name", borderwidth=5).grid(
-                row=0, column=4, padx=3, pady=1, sticky="W"
+                row=0, column=5, padx=3, pady=1, sticky="W"
             )
 
         # Create GUI for the field and place it on next available row

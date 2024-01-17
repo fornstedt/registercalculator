@@ -1,7 +1,7 @@
 """Module which extends ttk entries with hex/dec/bin functionality"""
 
 from string import hexdigits
-from tkinter import END, INSERT, Frame, ttk
+from tkinter import END, INSERT, Frame, ttk, IntVar
 from typing import Union
 
 from registercalculator.register import DELIMITER, DataField, DataRegister
@@ -183,6 +183,15 @@ class FieldGui(DataField):
         self.bin_entry = BinEntry(frame, self)
         self.hex_entry = HexEntry(frame, self)
         self.dec_entry = DecEntry(frame, self)
+
+        self.checkbox_value = IntVar()
+        self.checkbox = None
+        if end_bit - start_bit == 0:  # bit length 1
+            self.checkbox = ttk.Checkbutton(
+                frame, variable=self.checkbox_value, command=self._toggle_value
+            )
+            self.checkbox_value.set(self.value)
+
         self.name_entry = ttk.Entry(
             frame, width=NAME_FIELD_WIDTH, justify="left", font="TkFixedFont"
         )
@@ -197,11 +206,22 @@ class FieldGui(DataField):
         self.bin_entry.grid(row=row, column=1, sticky="E", padx=3, pady=1)
         self.hex_entry.grid(row=row, column=2, sticky="E", padx=3, pady=1)
         self.dec_entry.grid(row=row, column=3, sticky="E", padx=3, pady=1)
+        if self.checkbox is not None:
+            self.checkbox.grid(row=row, column=4, sticky="E", padx=3, pady=1)
         self.name_entry.grid(
-            row=row, column=4, sticky="W", padx=3, pady=1, columnspan=2
+            row=row, column=5, sticky="W", padx=3, pady=1, columnspan=2
         )
         self.register_observer(self._observer_callback)
         self._register.notify_observers()
+
+    def _toggle_value(self):
+        """Toggle the value of the field between 1 and 0"""
+        self.value = self.checkbox_value.get()
+
+    def _update_checkbox(self):
+        """Update the checkbox value based on the field value"""
+        if self.checkbox is not None:
+            self.checkbox_value.set(self.value)
 
     def _name_field_keyrelease(self, _):
         self._adjust_entry_length()
@@ -230,6 +250,7 @@ class FieldGui(DataField):
 
     def _observer_callback(self):
         if self.start_bit >= 0 and self.end_bit >= 0:
+            self._update_checkbox()
             self.bit_label.config(text=f"{self.start_bit}:{self.end_bit}")
         else:
             self.bit_label.config(text="N/A")
