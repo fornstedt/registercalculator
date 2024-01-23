@@ -109,30 +109,26 @@ class DataRegister(DataRegisterBase):
     def bit_0_is_lsb(self, is_lsb: bool):
         self._bit_0_is_lsb = is_lsb
 
+    def _swap_bytes_16bit(self, value: int) -> int:
+        return ((value >> 0x08) & 0x00FF) | ((value << 0x08) & 0xFF00)
+
+    def _swap_bytes_32bit(self, value: int) -> int:
+        return self._swap_bytes_16bit((value >> 0x10) & 0xFFFF) | (self._swap_bytes_16bit(value & 0xFFFF) << 0x10)
+    
+    def _swap_bytes_64bit(self, value: int) -> int:
+        return self._swap_bytes_32bit((value >> 0x20) & 0xFFFFFFFF) | (self._swap_bytes_32bit(value & 0xFFFFFFFF) << 0x20)
+    
     def swap_bytes(self) -> None:
         """Swap all bytes of the current value."""
         if self._bit_length == 16:
-            self._register_value = ((self._register_value >> 0x08) & 0x00FF) | (
-                (self._register_value << 0x08) & 0xFF00
-            )
+            self._register_value = self._swap_bytes_16bit(self._register_value)
+
         elif self._bit_length == 32:
-            self._register_value = (
-                ((self._register_value >> 24) & 0x000000FF)
-                | ((self._register_value >> 8) & 0x0000FF00)
-                | ((self._register_value << 8) & 0x00FF0000)
-                | ((self._register_value << 24) & 0xFF000000)
-            )
+            self._register_value = self._swap_bytes_32bit(self._register_value)
+            
         elif self._bit_length == 64:
-            self._register_value = (
-                ((self._register_value >> 56) & 0x00000000000000FF)
-                | ((self._register_value >> 40) & 0x000000000000FF00)
-                | ((self._register_value >> 24) & 0x0000000000FF0000)
-                | ((self._register_value >> 8) & 0x00000000FF000000)
-                | ((self._register_value << 8) & 0x000000FF00000000)
-                | ((self._register_value << 24) & 0x0000FF0000000000)
-                | ((self._register_value << 40) & 0x00FF000000000000)
-                | ((self._register_value << 56) & 0xFF00000000000000)
-            )
+            self._register_value = self._swap_bytes_64bit(self._register_value)
+            
         else:
             pass
         self.notify_observers()
