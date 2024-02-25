@@ -11,7 +11,7 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from registercalculator.register import DELIMITER, DataRegister
 
-from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry
+from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry, AddButton
 
 VERSION = "1.1"
 BIT_LENGTHS = ["8 bits", "16 bits", "32 bits"]
@@ -72,22 +72,20 @@ class RegisterCalculator:
         self.bin_entry = BinEntry(self.topframe, self.register, with_delimiter=True)
 
         # Byte swap button and a button to add new fields
-        self.add_button = ttk.Button(
-            self.topframe,
-            text="Add field",
+        self.add_button = AddButton(
+            master=self.topframe,
             width=self.add_button_width,
-            state="disabled",
             command=self._add_field_button_click,
         )
         self.swap_button = ttk.Button(
-            self.topframe,
+            master=self.topframe,
             text="Swap bytes",
             width=self.swap_button_width,
             state="enabled",
             command=self._swap_bytes_button_click,
         )
         self.bit_button = ttk.Button(
-            self.topframe,
+            master=self.topframe,
             width=self.bit_button_width,
             state="enabled",
             command=self._bit_order_button_click,
@@ -133,8 +131,9 @@ class RegisterCalculator:
         self.bottomframe.bind("<Expose>", self._on_expose)
 
         # Reset selection, clear fields and update all entries
-        self.field_selection = {"start": -1, "end": -1}
         self.fields = []
+
+        self.bin_entry.register_observer(self.add_button.update_selection_label)
 
         if import_filepath:
             with open(import_filepath, "r", encoding="utf-8") as import_file:
@@ -178,6 +177,7 @@ class RegisterCalculator:
         self.register.bit_0_is_lsb = not self.register.bit_0_is_lsb
         self._update_bit_button()
         self.register.notify_observers()
+        self.bin_entry.notify_observers()
 
     def _update_bit_button(self):
         new_button_label = (
@@ -270,10 +270,11 @@ class RegisterCalculator:
             self._add_field(field["start"], field["end"], field["name"])
 
     def _add_field_button_click(self):
-        self._add_field(self.field_selection["start"], self.field_selection["end"])
-        self.bin_entry.selection_clear()
-        self._update_selection()
-        self._update_add_field_button()
+        start_bit, end_bit = self.bin_entry.get_selection()
+        if start_bit is not None and end_bit is not None:
+            self._add_field(start_bit, end_bit)
+            self.bin_entry.selection_clear()
+            self.bin_entry.notify_observers()
 
     def _add_field(self, start_bit: int, end_bit: int, name=""):
         # If no previous fields, add labels first
@@ -301,59 +302,7 @@ class RegisterCalculator:
         self.fields.append(gui_field)
 
     def _mouse_motion(self, _):
-        self._update_selection()
-        self._update_add_field_button()
-
-    def _update_selection(self):
-        if self.bin_entry.selection_present():
-            # Get selection indexes
-            start_index = self.bin_entry.index(SEL_FIRST)
-            end_index = self.bin_entry.index(SEL_LAST)
-
-            # Count number of delimiters in that selection
-            delimiters_before_selection = self.bin_entry.get()[0:start_index].count(
-                DELIMITER
-            )
-            delimiters_in_selection = self.bin_entry.get()[start_index:end_index].count(
-                DELIMITER
-            )
-
-            # Calculate bit indexes
-            start_index = (
-                self.register.bit_length
-                - (start_index - delimiters_before_selection)
-                - 1
-            )
-            end_index = self.register.bit_length - (
-                end_index - delimiters_before_selection - delimiters_in_selection
-            )
-
-            # Store current selection
-            self.field_selection["start"] = (
-                start_index
-                if self.register.bit_0_is_lsb
-                else self.register.bit_length - start_index - 1
-            )
-
-            self.field_selection["end"] = (
-                end_index
-                if self.register.bit_0_is_lsb
-                else self.register.bit_length - end_index - 1
-            )
-
-        else:
-            self.field_selection["start"] = -1
-            self.field_selection["end"] = -1
-
-    def _update_add_field_button(self):
-        # Update 'Add field' button with selected indexes
-        if self.field_selection["start"] != -1 and self.field_selection["end"] != -1:
-            self.add_button.configure(
-                text=f'Add field {self.field_selection["start"]}:{self.field_selection["end"]}',
-                state="enabled",
-            )
-        else:
-            self.add_button.configure(text="Add field", state="disabled")
+        self.bin_entry.notify_observers()
 
     def _on_expose(self, event):
         widget = event.widget

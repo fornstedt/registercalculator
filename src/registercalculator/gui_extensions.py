@@ -1,7 +1,7 @@
 """Module which extends ttk entries with hex/dec/bin functionality"""
 
 from string import hexdigits
-from tkinter import END, INSERT, Frame, ttk, IntVar
+from tkinter import END, INSERT, SEL_FIRST, SEL_LAST, Frame, ttk, IntVar
 from typing import Union
 
 from registercalculator.register import DELIMITER, DataField, DataRegister
@@ -127,6 +127,8 @@ class BinEntry(ttk.Entry):
         )
         self.bind("<Any-KeyRelease>", self._key_release)
         self._field.register_observer(self._observer_callback)
+        self._observers = []
+        self.field_selection: dict[str, int | None] = {"start": None, "end": None}
 
     def _validate(self, text_to_insert: str, all_text: str) -> bool:
         allowed_characters = "01"
@@ -142,9 +144,12 @@ class BinEntry(ttk.Entry):
             return False
         return True
 
-    def _key_release(self, _):
+    def _key_release(self, event):
         value_string = self.get()
-        self._field.value = int(value_string, 2) if value_string != "" else 0
+        if event.char in ["0", "1"]:
+            self._field.value = int(value_string, 2) if value_string != "" else 0
+        else:
+            self.notify_observers()
 
     def _observer_callback(self):
         index = self.index(INSERT)
@@ -164,6 +169,65 @@ class BinEntry(ttk.Entry):
     def unregister(self):
         """Unregister the entry from register changes"""
         self._field.unregister_observer(self._observer_callback)
+
+    def register_observer(self, callback):
+        """Register a callback to be called when the selection is changed."""
+        self._observers.append(callback)
+
+    def unregister_observer(self, callback):
+        """Unregister a callback"""
+        self._observers.remove(callback)
+
+    def notify_observers(self):
+        """Notify all observers about a selection change"""
+        self._calculate_selection()
+        for callback in self._observers:
+            callback(self.field_selection["start"], self.field_selection["end"])
+
+    def _calculate_selection(self):
+        start_index, end_index = self._get_raw_selection()
+
+        if start_index is not None and end_index is not None:
+            # Count number of delimiters in that selection
+            delimiters_before_selection = self.get()[0:start_index].count(DELIMITER)
+            delimiters_in_selection = self.get()[start_index:end_index].count(DELIMITER)
+
+            # Calculate bit indexes
+            start_index = (
+                self._field.bit_length - (start_index - delimiters_before_selection) - 1
+            )
+            end_index = self._field.bit_length - (
+                end_index - delimiters_before_selection - delimiters_in_selection
+            )
+
+            # Store current selection
+            self.field_selection["start"] = (
+                start_index
+                if self._field.bit_0_is_lsb
+                else self._field.bit_length - start_index - 1
+            )
+
+            self.field_selection["end"] = (
+                end_index
+                if self._field.bit_0_is_lsb
+                else self._field.bit_length - end_index - 1
+            )
+        else:
+            self.field_selection["start"] = None
+            self.field_selection["end"] = None
+
+    def _get_raw_selection(self) -> tuple[int | None, int | None]:
+        """Get the raw selection indexes"""
+        start_index = None
+        end_index = None
+        if self.selection_present():
+            start_index = self.index(SEL_FIRST)
+            end_index = self.index(SEL_LAST)
+        return start_index, end_index
+
+    def get_selection(self) -> tuple[int | None, int | None]:
+        """Get the selection indexes"""
+        return self.field_selection["start"], self.field_selection["end"]
 
 
 class FieldGui(DataField):
@@ -254,3 +318,17 @@ class FieldGui(DataField):
             self.bit_label.config(text=f"{self.start_bit}:{self.end_bit}")
         else:
             self.bit_label.config(text="N/A")
+
+
+class AddButton(ttk.Button):
+    def __init__(self, master=None, **kw) -> None:
+        super().__init__(master, text="Add filed", state="disabled", **kw)
+
+    def update_selection_label(self, start, end) -> None:
+        if start is not None and end is not None:
+            self.configure(
+                text=f"Add field {start}:{end}",
+                state="enabled",
+            )
+        else:
+            self.configure(text="Add field", state="disabled")
