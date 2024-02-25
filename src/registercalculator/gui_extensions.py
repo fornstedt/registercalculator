@@ -322,7 +322,7 @@ class FieldGui(DataField):
 
 class AddButton(ttk.Button):
     def __init__(self, master=None, **kw) -> None:
-        super().__init__(master, text="Add filed", state="disabled", **kw)
+        super().__init__(master, text="Add field", state="disabled", **kw)
 
     def update_selection_label(self, start, end) -> None:
         if start is not None and end is not None:
