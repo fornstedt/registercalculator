@@ -205,7 +205,7 @@ class DataField(DataRegisterBase):
     @property
     def bit_0_is_lsb(self) -> bool:
         """Return True is bit 0 is LSB"""
-        return self._register._bit_0_is_lsb
+        return self._register.bit_0_is_lsb
 
     def register_observer(self, callback) -> None:
         """Register a callback to be called when the register value is changed."""

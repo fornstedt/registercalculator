@@ -6,10 +6,10 @@ import tkinter as tk
 import webbrowser
 from math import log
 from pathlib import Path
-from tkinter import SEL_FIRST, SEL_LAST, Frame, filedialog, ttk
+from tkinter import Frame, filedialog, ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
-from registercalculator.register import DELIMITER, DataRegister
+from registercalculator.register import DataRegister
 
 from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry, AddButton
 
