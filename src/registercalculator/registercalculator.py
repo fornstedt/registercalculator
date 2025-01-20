@@ -14,7 +14,7 @@ from registercalculator.register import DataRegister
 
 from .gui_extensions import BinEntry, DecEntry, FieldGui, HexEntry, AddButton
 
-VERSION = "1.1"
+VERSION = "1.1.1"
 BIT_LENGTHS = ["8 bits", "16 bits", "32 bits"]
 
 
