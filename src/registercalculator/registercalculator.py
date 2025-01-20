@@ -1,5 +1,6 @@
 """A tk based GUI to view and manipulate a register with fields"""
 
+import re
 import json
 import sys
 import tkinter as tk
@@ -144,14 +145,11 @@ class RegisterCalculator:
 
     def drop(self, event):
         # event.data contains a list of the dropped files (as a string)
-        files = event.data.split()
+        file = re.findall(r"{(.*?)}", event.data)[0]
 
-        for file in files:
-            # Handle each dropped file
-            print(f"Dropped file: {file}")
-            with open(file, "r", encoding="utf-8") as import_file:
-                self._import_fields(import_file)
-            break
+        print(f"Dropped file: {file}")
+        with open(file, "r", encoding="utf-8") as import_file:
+            self._import_fields(import_file)
 
     @property
     def _selected_number_of_bits(self):
